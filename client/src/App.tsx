@@ -6,6 +6,11 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
+import Prompts from "./pages/Prompts";
+import AIProviders from "./pages/AIProviders";
+import Evaluations from "./pages/Evaluations";
+import ContextPackages from "./pages/ContextPackages";
+import Analytics from "./pages/Analytics";
 
 function Router() {
   return (
@@ -17,42 +22,27 @@ function Router() {
       </Route>
       <Route path="/prompts">
         <DashboardLayout>
-          <div className="p-8">
-            <h1 className="text-3xl font-bold">Prompts</h1>
-            <p className="text-muted-foreground mt-2">Manage your prompt templates</p>
-          </div>
+          <Prompts />
         </DashboardLayout>
       </Route>
       <Route path="/context-packages">
         <DashboardLayout>
-          <div className="p-8">
-            <h1 className="text-3xl font-bold">Context Packages</h1>
-            <p className="text-muted-foreground mt-2">Manage context for your prompts</p>
-          </div>
+          <ContextPackages />
         </DashboardLayout>
       </Route>
       <Route path="/evaluations">
         <DashboardLayout>
-          <div className="p-8">
-            <h1 className="text-3xl font-bold">Evaluations</h1>
-            <p className="text-muted-foreground mt-2">Test and compare prompts</p>
-          </div>
+          <Evaluations />
         </DashboardLayout>
       </Route>
       <Route path="/analytics">
         <DashboardLayout>
-          <div className="p-8">
-            <h1 className="text-3xl font-bold">Analytics</h1>
-            <p className="text-muted-foreground mt-2">View your usage metrics</p>
-          </div>
+          <Analytics />
         </DashboardLayout>
       </Route>
       <Route path="/providers">
         <DashboardLayout>
-          <div className="p-8">
-            <h1 className="text-3xl font-bold">AI Providers</h1>
-            <p className="text-muted-foreground mt-2">Manage your AI provider connections</p>
-          </div>
+          <AIProviders />
         </DashboardLayout>
       </Route>
       <Route path="/404" component={NotFound} />
