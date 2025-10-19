@@ -1,0 +1,9 @@
+{
+  "query": "DROP TABLE IF EXISTS analyticsEvents, evaluationResults, evaluations, contextPackages, promptVersions, prompts, aiProviders, organizationMemberships, organizations, users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user fL61J84vCiBRUTT.74e40c23b15a --database RFdKd982nTHAuugc7sboHw --execute DROP TABLE IF EXISTS analyticsEvents, evaluationResults, evaluations, contextPackages, promptVersions, prompts, aiProviders, organizationMemberships, organizations, users;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 678
+}
