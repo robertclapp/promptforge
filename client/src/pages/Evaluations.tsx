@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Zap, Play, Eye, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Plus, Zap, Play, Eye, Clock, CheckCircle2, XCircle, Loader2, Download, FileText } from "lucide-react";
+import { exportEvaluationToPDF, exportEvaluationToCSV } from "@/utils/exportPDF";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -123,6 +124,64 @@ export default function Evaluations() {
   const handleViewResults = (evaluation: any) => {
     setSelectedEvaluation(evaluation);
     setIsResultsOpen(true);
+  };
+
+  const handleExportPDF = () => {
+    if (!selectedEvaluation || !results || results.length === 0) {
+      toast.error("No results to export");
+      return;
+    }
+
+    const prompt = prompts?.find((p: any) => p.id === selectedEvaluation.promptId);
+    const exportData = {
+      evaluationName: selectedEvaluation.name,
+      promptName: prompt?.name || "Unknown Prompt",
+      createdAt: selectedEvaluation.createdAt,
+      results: results.map((r: any) => {
+        const provider = providers?.find((p: any) => p.id === r.providerId);
+        return {
+          providerName: provider?.name || "Unknown Provider",
+          model: r.model || provider?.model || "Unknown Model",
+          tokensUsed: r.tokensUsed,
+          latencyMs: r.latencyMs,
+          cost: r.cost / 100, // Convert from cents to dollars
+          quality: r.quality || 0,
+          output: r.output,
+        };
+      }),
+    };
+
+    exportEvaluationToPDF(exportData);
+    toast.success("PDF exported successfully!");
+  };
+
+  const handleExportCSV = () => {
+    if (!selectedEvaluation || !results || results.length === 0) {
+      toast.error("No results to export");
+      return;
+    }
+
+    const prompt = prompts?.find((p: any) => p.id === selectedEvaluation.promptId);
+    const exportData = {
+      evaluationName: selectedEvaluation.name,
+      promptName: prompt?.name || "Unknown Prompt",
+      createdAt: selectedEvaluation.createdAt,
+      results: results.map((r: any) => {
+        const provider = providers?.find((p: any) => p.id === r.providerId);
+        return {
+          providerName: provider?.name || "Unknown Provider",
+          model: r.model || provider?.model || "Unknown Model",
+          tokensUsed: r.tokensUsed,
+          latencyMs: r.latencyMs,
+          cost: r.cost / 100, // Convert from cents to dollars
+          quality: r.quality || 0,
+          output: r.output,
+        };
+      }),
+    };
+
+    exportEvaluationToCSV(exportData);
+    toast.success("CSV exported successfully!");
   };
 
   const addTestCase = () => {
@@ -434,7 +493,26 @@ export default function Evaluations() {
             )}
           </div>
           <DialogFooter>
-            <Button onClick={() => setIsResultsOpen(false)}>Close</Button>
+            <div className="flex gap-2 w-full">
+              <Button
+                variant="outline"
+                onClick={() => handleExportPDF()}
+                disabled={!results || results.length === 0}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Export PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleExportCSV()}
+                disabled={!results || results.length === 0}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+              <div className="flex-1" />
+              <Button onClick={() => setIsResultsOpen(false)}>Close</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

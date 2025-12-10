@@ -19,12 +19,17 @@ export const analyticsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      // TODO: Implement getUserStats aggregation
+      // Get actual counts from database
+      const prompts = await db.getUserPrompts(ctx.user.id);
+      const evaluations = await db.getUserEvaluations(ctx.user.id);
+      const providers = await db.getUserAIProviders(ctx.user.id);
+      const events = await db.getUserAnalytics(ctx.user.id);
+      
       const stats = {
-        totalPrompts: 0,
-        totalEvaluations: 0,
-        totalProviders: 0,
-        totalEvents: 0,
+        totalPrompts: prompts.length,
+        totalEvaluations: evaluations.length,
+        totalProviders: providers.length,
+        totalEvents: events.length,
       };
       return stats;
     }),
