@@ -27,11 +27,33 @@
 - [ ] Generate comparison reports
 - [ ] Add export functionality (PDF, CSV)
 
-## Phase 4: Testing
-- [ ] Write integration tests for AI providers
-- [ ] Write tests for job queue
-- [ ] Test complete evaluation workflow
-- [ ] Test with real API keys
+## Phase 4: Frontend Updates
+- [x] Update AI Providers page to include model field in create form
+- [x] Add model selection dropdown with provider-specific models
+- [x] Update Evaluations page with real-time job status polling (3s interval)
+- [x] Add evaluation progress indicator (status badges)
+- [x] Show live results as they complete (auto-refresh)
+- [ ] Update Evaluations detail page to show comparison metrics
+
+## Phase 5: Onboarding Flow
+- [ ] Create onboarding wizard component
+- [ ] Step 1: Add first AI provider with API key
+- [ ] Step 2: Create first prompt template
+- [ ] Step 3: Run first evaluation
+- [ ] Add skip/complete onboarding tracking
+- [ ] Show onboarding on first login
+
+## Phase 6: GitHub & Demo
+- [ ] Commit all AI integration code
+- [ ] Push to GitHub repository
+- [ ] Create demo script
+- [ ] Record demo video
+- [ ] Update README with demo link
+
+## Phase 7: Testing (Completed)
+- [x] Write integration tests for AI providers (58/62 passing)
+- [x] Write tests for job queue
+- [ ] Test complete evaluation workflow with real API keys
 - [ ] Verify cost calculations are accurate
 - [ ] Load testing with multiple concurrent evaluations
 

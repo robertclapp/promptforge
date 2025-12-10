@@ -30,30 +30,53 @@ const PROVIDER_INFO = {
     description: "GPT-4, GPT-3.5, and other OpenAI models",
     icon: "🤖",
     color: "bg-green-50 text-green-700",
+    models: [
+      { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+      { value: "gpt-4", label: "GPT-4" },
+      { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+    ],
   },
   anthropic: {
     name: "Anthropic",
     description: "Claude 3 and Claude 2 models",
     icon: "🧠",
     color: "bg-orange-50 text-orange-700",
+    models: [
+      { value: "claude-3-opus", label: "Claude 3 Opus" },
+      { value: "claude-3-sonnet", label: "Claude 3 Sonnet" },
+      { value: "claude-3-haiku", label: "Claude 3 Haiku" },
+      { value: "claude-2.1", label: "Claude 2.1" },
+    ],
   },
   google: {
     name: "Google",
     description: "Gemini and PaLM models",
     icon: "🔍",
     color: "bg-blue-50 text-blue-700",
+    models: [
+      { value: "gemini-pro", label: "Gemini Pro" },
+      { value: "gemini-pro-vision", label: "Gemini Pro Vision" },
+    ],
   },
   mistral: {
     name: "Mistral AI",
     description: "Mistral and Mixtral models",
     icon: "⚡",
     color: "bg-purple-50 text-purple-700",
+    models: [
+      { value: "mistral-large", label: "Mistral Large" },
+      { value: "mistral-medium", label: "Mistral Medium" },
+      { value: "mistral-small", label: "Mistral Small" },
+    ],
   },
   custom: {
     name: "Custom",
     description: "Custom API endpoint",
     icon: "🔧",
     color: "bg-gray-50 text-gray-700",
+    models: [
+      { value: "custom-model", label: "Custom Model" },
+    ],
   },
 };
 
@@ -62,6 +85,7 @@ export default function AIProviders() {
   const [formData, setFormData] = useState({
     provider: "openai" as keyof typeof PROVIDER_INFO,
     name: "",
+    model: "gpt-4-turbo",
     apiKey: "",
     baseUrl: "",
   });
@@ -76,6 +100,7 @@ export default function AIProviders() {
       setFormData({
         provider: "openai",
         name: "",
+        model: "gpt-4-turbo",
         apiKey: "",
         baseUrl: "",
       });
@@ -112,6 +137,7 @@ export default function AIProviders() {
     createMutation.mutate({
       provider: formData.provider,
       name: formData.name,
+      model: formData.model,
       apiKey: formData.apiKey,
       baseUrl: formData.baseUrl || undefined,
     });
@@ -254,7 +280,14 @@ export default function AIProviders() {
               <Label htmlFor="provider">Provider *</Label>
               <Select
                 value={formData.provider}
-                onValueChange={(value: any) => setFormData({ ...formData, provider: value })}
+                onValueChange={(value: any) => {
+                  const provider = value as keyof typeof PROVIDER_INFO;
+                  setFormData({ 
+                    ...formData, 
+                    provider,
+                    model: PROVIDER_INFO[provider].models[0].value
+                  });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -279,6 +312,27 @@ export default function AIProviders() {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., My OpenAI Account"
               />
+            </div>
+            <div>
+              <Label htmlFor="model">Model *</Label>
+              <Select
+                value={formData.model}
+                onValueChange={(value) => setFormData({ ...formData, model: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROVIDER_INFO[formData.provider].models.map((model) => (
+                    <SelectItem key={model.value} value={model.value}>
+                      {model.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Select the specific model to use with this provider
+              </p>
             </div>
             <div>
               <Label htmlFor="apiKey">API Key *</Label>

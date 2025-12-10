@@ -37,12 +37,24 @@ export default function Evaluations() {
   });
 
   const utils = trpc.useUtils();
-  const { data: evaluations, isLoading } = trpc.evaluations.list.useQuery({});
+  const { data: evaluations, isLoading } = trpc.evaluations.list.useQuery(
+    {},
+    {
+      // Poll every 3 seconds to get real-time status updates
+      refetchInterval: 3000,
+    }
+  );
   const { data: prompts } = trpc.prompts.list.useQuery({ limit: 100 });
   const { data: providers } = trpc.aiProviders.list.useQuery({});
   const { data: results } = trpc.evaluations.getResults.useQuery(
     { evaluationId: selectedEvaluation?.id || "" },
-    { enabled: !!selectedEvaluation }
+    { 
+      enabled: !!selectedEvaluation,
+      // Poll results if evaluation is still running
+      refetchInterval: (data) => {
+        return selectedEvaluation?.status === 'running' || selectedEvaluation?.status === 'pending' ? 3000 : false;
+      },
+    }
   );
 
   const createMutation = trpc.evaluations.create.useMutation({
