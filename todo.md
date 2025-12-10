@@ -36,12 +36,12 @@
 - [ ] Update Evaluations detail page to show comparison metrics
 
 ## Phase 5: Onboarding Flow
-- [ ] Create onboarding wizard component
-- [ ] Step 1: Add first AI provider with API key
-- [ ] Step 2: Create first prompt template
-- [ ] Step 3: Run first evaluation
-- [ ] Add skip/complete onboarding tracking
-- [ ] Show onboarding on first login
+- [x] Create onboarding wizard component
+- [x] Step 1: Add first AI provider with API key
+- [x] Step 2: Create first prompt template
+- [x] Step 3: Run first evaluation
+- [x] Add skip/complete onboarding tracking (localStorage)
+- [x] Show onboarding on first login (when no data exists)
 
 ## Phase 6: GitHub & Demo
 - [ ] Commit all AI integration code

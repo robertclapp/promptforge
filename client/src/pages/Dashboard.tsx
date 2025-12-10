@@ -1,12 +1,33 @@
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Package, Zap, Settings, Plus, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
+import OnboardingWizard from "@/components/OnboardingWizard";
 
 export default function Dashboard() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { data: stats, isLoading } = trpc.analytics.getDashboard.useQuery({});
+  const { data: providers } = trpc.aiProviders.list.useQuery({});
+  const { data: prompts } = trpc.prompts.list.useQuery({ limit: 1 });
+
+  // Show onboarding if user has no providers or prompts
+  useEffect(() => {
+    if (providers !== undefined && prompts !== undefined) {
+      const hasNoData = providers.length === 0 && prompts.length === 0;
+      const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+      if (hasNoData && !hasSeenOnboarding) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [providers, prompts]);
+
+  const handleOnboardingClose = () => {
+    localStorage.setItem('hasSeenOnboarding', 'true');
+    setShowOnboarding(false);
+  };
 
   if (isLoading) {
     return (
@@ -231,6 +252,9 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Onboarding Wizard */}
+      <OnboardingWizard open={showOnboarding} onClose={handleOnboardingClose} />
     </div>
   );
 }
