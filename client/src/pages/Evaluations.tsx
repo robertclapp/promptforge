@@ -56,7 +56,7 @@ export default function Evaluations() {
         testCases: [{ input: { variable: "" }, expectedOutput: "" }],
       });
       utils.evaluations.list.invalidate();
-      utils.analytics.dashboard.invalidate();
+      utils.analytics.getDashboard.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to create evaluation");
@@ -80,10 +80,16 @@ export default function Evaluations() {
       return;
     }
 
+    if (!providers || providers.length === 0) {
+      toast.error("Please add at least one AI provider first");
+      return;
+    }
+
     createMutation.mutate({
       name: formData.name,
       description: formData.description || undefined,
       promptId: formData.promptId,
+      providerIds: providers.map((p: any) => p.id),
       testCases: formData.testCases.map((tc) => ({
         input: tc.input,
         expectedOutput: tc.expectedOutput || undefined,
@@ -98,9 +104,7 @@ export default function Evaluations() {
     }
 
     runMutation.mutate({
-      evaluationId,
-      providerIds: providers.map((p: any) => p.id),
-      models: ["gpt-4"],
+      id: evaluationId,
     });
   };
 

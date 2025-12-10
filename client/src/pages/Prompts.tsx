@@ -51,7 +51,7 @@ export default function Prompts() {
         isPublic: false,
       });
       utils.prompts.list.invalidate();
-      utils.analytics.dashboard.invalidate();
+      utils.analytics.getDashboard.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to create prompt");
@@ -62,7 +62,7 @@ export default function Prompts() {
     onSuccess: () => {
       toast.success("Prompt deleted successfully!");
       utils.prompts.list.invalidate();
-      utils.analytics.dashboard.invalidate();
+      utils.analytics.getDashboard.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to delete prompt");

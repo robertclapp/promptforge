@@ -5,8 +5,8 @@ import { BarChart3, TrendingUp, Activity, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Analytics() {
-  const { data: stats, isLoading } = trpc.analytics.dashboard.useQuery({ days: 30 });
-  const { data: events } = trpc.analytics.events.useQuery({ days: 30 });
+  const { data: stats, isLoading } = trpc.analytics.getDashboard.useQuery({});
+  const { data: eventBreakdown } = trpc.analytics.getEventBreakdown.useQuery({});
 
   if (isLoading) {
     return (
@@ -21,19 +21,7 @@ export default function Analytics() {
     );
   }
 
-  const eventTypes = events?.reduce(
-    (acc: Record<string, number>, event: any) => {
-      acc[event.eventType] = (acc[event.eventType] || 0) + 1;
-      return acc;
-    },
-    {}
-  );
-
-  const eventTypesList = eventTypes
-    ? Object.entries(eventTypes)
-        .map(([type, count]) => ({ type, count }))
-        .sort((a, b) => (b.count as number) - (a.count as number))
-    : [];
+  const eventTypesList = eventBreakdown || [];
 
   return (
     <div className="space-y-6">
@@ -55,7 +43,7 @@ export default function Analytics() {
             <Activity className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{events?.length || 0}</div>
+            <div className="text-3xl font-bold">{stats?.totalEvents || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Events in the last 30 days</p>
           </CardContent>
         </Card>
@@ -96,11 +84,11 @@ export default function Analytics() {
         <CardContent>
           {eventTypesList.length > 0 ? (
             <div className="space-y-4">
-              {eventTypesList.map(({ type, count }) => (
-                <div key={type} className="flex items-center justify-between">
+              {eventTypesList.map(({ eventType, count }) => (
+                <div key={eventType} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary">
-                      {type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      {eventType.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-4">
@@ -108,7 +96,7 @@ export default function Analytics() {
                       <div
                         className="bg-primary rounded-full h-2"
                         style={{
-                          width: `${((count as number) / (events?.length || 1)) * 100}%`,
+                          width: `${((count as number) / (stats?.totalEvents || 1)) * 100}%`,
                         }}
                       />
                     </div>
@@ -130,9 +118,9 @@ export default function Analytics() {
           <CardDescription>Your latest actions</CardDescription>
         </CardHeader>
         <CardContent>
-          {events && events.length > 0 ? (
+          {eventTypesList && eventTypesList.length > 0 ? (
             <div className="space-y-3">
-              {events.slice(0, 10).map((event: any, index: number) => (
+              {eventTypesList.slice(0, 10).map((item: any, index: number) => (
                 <div
                   key={index}
                   className="flex items-center justify-between py-3 border-b last:border-0"
@@ -141,18 +129,12 @@ export default function Analytics() {
                     <div className="w-2 h-2 bg-primary rounded-full" />
                     <div>
                       <p className="text-sm font-medium">
-                        {event.eventType.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        {item.eventType.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}
                       </p>
-                      {event.eventData && (
-                        <p className="text-xs text-muted-foreground">
-                          {JSON.stringify(event.eventData).slice(0, 50)}...
-                        </p>
-                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {item.count} occurrences
+                      </p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(event.createdAt).toLocaleDateString()}
                   </div>
                 </div>
               ))}

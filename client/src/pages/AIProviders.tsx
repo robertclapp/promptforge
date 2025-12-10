@@ -80,7 +80,7 @@ export default function AIProviders() {
         baseUrl: "",
       });
       utils.aiProviders.list.invalidate();
-      utils.analytics.dashboard.invalidate();
+      utils.analytics.getDashboard.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to add provider");
@@ -91,7 +91,7 @@ export default function AIProviders() {
     onSuccess: () => {
       toast.success("Provider deleted successfully!");
       utils.aiProviders.list.invalidate();
-      utils.analytics.dashboard.invalidate();
+      utils.analytics.getDashboard.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to delete provider");

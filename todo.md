@@ -26,12 +26,13 @@
 - [x] Create separate router files (prompts, providers, evaluations, etc.)
 
 ## Frontend Refactoring
-- [ ] Extract reusable hooks
-- [ ] Implement proper loading states
-- [ ] Add error boundaries
-- [ ] Improve form validation
-- [ ] Add optimistic updates
-- [ ] Implement proper TypeScript types
+- [x] Extract reusable hooks (usePrompts, useAIProviders, useEvaluations)
+- [x] Implement proper loading states
+- [x] Add error boundaries (already exists)
+- [x] Improve form validation (Zod schemas in tRPC)
+- [x] Add optimistic updates (via tRPC utils)
+- [x] Implement proper TypeScript types
+- [x] Fix all TypeScript compilation errors
 - [ ] Add unit tests for components
 - [ ] Improve accessibility (a11y)
 

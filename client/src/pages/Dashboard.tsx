@@ -6,7 +6,7 @@ import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = trpc.analytics.dashboard.useQuery({ days: 30 });
+  const { data: stats, isLoading } = trpc.analytics.getDashboard.useQuery({});
 
   if (isLoading) {
     return (
@@ -79,7 +79,7 @@ export default function Dashboard() {
     },
     {
       title: "Activity",
-      value: stats?.recentActivity?.length || 0,
+      value: stats?.totalEvents || 0,
       icon: TrendingUp,
       color: "text-green-600",
       bgColor: "bg-green-50",
@@ -152,20 +152,26 @@ export default function Dashboard() {
           <CardDescription>Your latest actions in the past 30 days</CardDescription>
         </CardHeader>
         <CardContent>
-          {stats?.recentActivity && stats.recentActivity.length > 0 ? (
+           {stats && (stats.totalPrompts > 0 || stats.totalEvaluations > 0) ? (
             <div className="space-y-4">
-              {stats.recentActivity.map((event, index) => (
-                <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {event.eventType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(event.createdAt!).toLocaleDateString()}
-                    </p>
-                  </div>
+              <div className="flex items-center justify-between py-2 border-b">
+                <div>
+                  <p className="text-sm font-medium">Prompts Created</p>
+                  <p className="text-xs text-muted-foreground">Total: {stats.totalPrompts}</p>
                 </div>
-              ))}
+              </div>
+              <div className="flex items-center justify-between py-2 border-b">
+                <div>
+                  <p className="text-sm font-medium">Evaluations Run</p>
+                  <p className="text-xs text-muted-foreground">Total: {stats.totalEvaluations}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium">AI Providers</p>
+                  <p className="text-xs text-muted-foreground">Total: {stats.totalProviders}</p>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="text-center py-8">
