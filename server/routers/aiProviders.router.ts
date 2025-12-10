@@ -5,6 +5,20 @@ import { TRPCError } from "@trpc/server";
 import { encrypt, decrypt } from "../utils/crypto";
 
 /**
+ * Get default model for each provider
+ */
+function getDefaultModel(provider: string): string {
+  const defaults: Record<string, string> = {
+    openai: "gpt-4-turbo",
+    anthropic: "claude-3-sonnet",
+    google: "gemini-pro",
+    mistral: "mistral-large",
+    custom: "custom-model",
+  };
+  return defaults[provider] || "unknown";
+}
+
+/**
  * AI Providers Router
  * Handles secure management of AI provider API keys
  */
@@ -58,8 +72,10 @@ export const aiProvidersRouter = router({
       z.object({
         provider: z.enum(["openai", "anthropic", "google", "mistral", "custom"]),
         name: z.string().min(1).max(255),
+        model: z.string().optional(),
         apiKey: z.string().min(1),
         baseUrl: z.string().url().optional(),
+        config: z.record(z.string(), z.any()).optional(),
         organizationId: z.string().optional(),
       })
     )
@@ -72,8 +88,10 @@ export const aiProvidersRouter = router({
         organizationId: input.organizationId,
         provider: input.provider,
         name: input.name,
+        model: input.model || getDefaultModel(input.provider),
         apiKeyEncrypted: encryptedKey,
         baseUrl: input.baseUrl,
+        config: input.config ? JSON.stringify(input.config) : undefined,
       });
 
       // Track analytics

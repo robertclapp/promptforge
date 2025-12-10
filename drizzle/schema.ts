@@ -71,8 +71,10 @@ export const aiProviders = mysqlTable("aiProviders", {
   organizationId: varchar("organizationId", { length: 64 }),
   provider: mysqlEnum("provider", ["openai", "anthropic", "google", "mistral", "custom"]).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
+  model: varchar("model", { length: 100 }).notNull(), // e.g., gpt-4, claude-3-opus
   apiKeyEncrypted: text("apiKeyEncrypted").notNull(), // Encrypted API key
   baseUrl: varchar("baseUrl", { length: 500 }), // For custom providers
+  config: text("config"), // JSON config for provider-specific settings
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),

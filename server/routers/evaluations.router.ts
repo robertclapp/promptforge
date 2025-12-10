@@ -2,6 +2,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 import { TRPCError } from "@trpc/server";
+import { queueEvaluation, getEvaluationJobStatus, getQueueStats } from "../services/evaluationExecution.service";
 
 /**
  * Evaluations Router
@@ -102,6 +103,17 @@ export const evaluationsRouter = router({
         status: "pending",
       });
 
+      // Queue evaluation for async execution
+      const jobId = await queueEvaluation({
+        evaluationId,
+        promptId: input.promptId,
+        promptContent: prompt.content,
+        promptVariables: prompt.variables || [],
+        testCases: input.testCases,
+        providerIds: input.providerIds,
+        userId: ctx.user.id,
+      });
+
       // Track analytics
       await db.trackEvent({
         userId: ctx.user.id,
@@ -114,10 +126,7 @@ export const evaluationsRouter = router({
         },
       });
 
-      // TODO: Queue evaluation job to run asynchronously
-      // For now, return immediately with pending status
-
-      return { id: evaluationId };
+      return { id: evaluationId, jobId };
     }),
 
   /**

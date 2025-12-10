@@ -8,6 +8,13 @@
       "when": 1760838509815,
       "tag": "0000_legal_dark_phoenix",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1765377890679,
+      "tag": "0001_chunky_red_wolf",
+      "breakpoints": true
     }
   ]
 }
