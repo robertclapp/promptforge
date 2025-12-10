@@ -1,0 +1,9 @@
+{
+  "query": "CREATE INDEX IF NOT EXISTS idx_evaluations_user_id ON evaluations(userId);\nCREATE INDEX IF NOT EXISTS idx_evaluations_prompt_id ON evaluations(promptId);\nCREATE INDEX IF NOT EXISTS idx_evaluations_status ON evaluations(status);\nCREATE INDEX IF NOT EXISTS idx_ai_providers_user_id ON aiProviders(userId);\nCREATE INDEX IF NOT EXISTS idx_analytics_events_user_id ON analyticsEvents(userId);\nCREATE INDEX IF NOT EXISTS idx_analytics_events_event_type ON analyticsEvents(eventType);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user fL61J84vCiBRUTT.74e40c23b15a --database RFdKd982nTHAuugc7sboHw --execute CREATE INDEX IF NOT EXISTS idx_evaluations_user_id ON evaluations(userId);\nCREATE INDEX IF NOT EXISTS idx_evaluations_prompt_id ON evaluations(promptId);\nCREATE INDEX IF NOT EXISTS idx_evaluations_status ON evaluations(status);\nCREATE INDEX IF NOT EXISTS idx_ai_providers_user_id ON aiProviders(userId);\nCREATE INDEX IF NOT EXISTS idx_analytics_events_user_id ON analyticsEvents(userId);\nCREATE INDEX IF NOT EXISTS idx_analytics_events_event_type ON analyticsEvents(eventType);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2846
+}
