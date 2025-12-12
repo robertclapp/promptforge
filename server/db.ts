@@ -280,11 +280,17 @@ export async function getUserPrompts(
   }
 
   if (options?.search) {
+    // Escape special LIKE characters to prevent SQL injection
+    const escapedSearch = options.search
+      .replace(/\\/g, '\\\\')
+      .replace(/%/g, '\\%')
+      .replace(/_/g, '\\_');
+    const searchPattern = `%${escapedSearch}%`;
     conditions.push(
       or(
-        like(prompts.name, `%${options.search}%`),
-        like(prompts.description, `%${options.search}%`),
-        like(prompts.content, `%${options.search}%`)
+        like(prompts.name, searchPattern),
+        like(prompts.description, searchPattern),
+        like(prompts.content, searchPattern)
       )!
     );
   }
@@ -425,22 +431,48 @@ export async function getEvaluation(id: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getUserEvaluations(userId: string, organizationId?: string) {
+export async function getUserEvaluations(
+  userId: string,
+  options?: {
+    organizationId?: string;
+    promptId?: string;
+    status?: "pending" | "running" | "completed" | "failed";
+    limit?: number;
+    offset?: number;
+  }
+) {
   const db = await getDb();
   if (!db) return [];
 
   const conditions = [eq(evaluations.userId, userId)];
 
-  if (organizationId) {
-    conditions.push(eq(evaluations.organizationId, organizationId));
+  if (options?.organizationId) {
+    conditions.push(eq(evaluations.organizationId, options.organizationId));
   }
 
-  const result = await db
+  if (options?.promptId) {
+    conditions.push(eq(evaluations.promptId, options.promptId));
+  }
+
+  if (options?.status) {
+    conditions.push(eq(evaluations.status, options.status));
+  }
+
+  let query = db
     .select()
     .from(evaluations)
     .where(and(...conditions))
     .orderBy(desc(evaluations.createdAt));
 
+  if (options?.limit) {
+    query = query.limit(options.limit) as any;
+  }
+
+  if (options?.offset) {
+    query = query.offset(options.offset) as any;
+  }
+
+  const result = await query;
   return result;
 }
 
@@ -449,6 +481,13 @@ export async function updateEvaluation(id: string, updates: Partial<InsertEvalua
   if (!db) throw new Error("Database not available");
 
   await db.update(evaluations).set(updates).where(eq(evaluations.id, id));
+}
+
+export async function deleteEvaluation(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.delete(evaluations).where(eq(evaluations.id, id));
 }
 
 // ============= EVALUATION RESULT FUNCTIONS =============
@@ -473,6 +512,13 @@ export async function getEvaluationResults(evaluationId: string) {
     .orderBy(evaluationResults.testCaseIndex);
 
   return result;
+}
+
+export async function deleteEvaluationResults(evaluationId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.delete(evaluationResults).where(eq(evaluationResults.evaluationId, evaluationId));
 }
 
 // ============= ANALYTICS FUNCTIONS =============

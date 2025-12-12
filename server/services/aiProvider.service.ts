@@ -6,6 +6,36 @@ import { decrypt } from "../utils/crypto";
  * Tracks tokens, latency, and cost for each request
  */
 
+// Default timeout for API requests (60 seconds)
+const DEFAULT_TIMEOUT_MS = 60000;
+
+/**
+ * Fetch with timeout using AbortController
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export interface AIProviderConfig {
   id: string;
   provider: "openai" | "anthropic" | "google" | "mistral";
@@ -34,28 +64,35 @@ export interface PromptExecutionResult {
 }
 
 /**
- * Token pricing per 1K tokens (as of Jan 2025)
+ * Token pricing per 1K tokens (as of Dec 2025)
  * Input/Output pricing
  */
 const TOKEN_PRICING: Record<string, { input: number; output: number }> = {
   // OpenAI
   "gpt-4-turbo": { input: 0.01, output: 0.03 },
+  "gpt-4o": { input: 0.005, output: 0.015 },
+  "gpt-4o-mini": { input: 0.00015, output: 0.0006 },
   "gpt-4": { input: 0.03, output: 0.06 },
   "gpt-3.5-turbo": { input: 0.0005, output: 0.0015 },
-  
+
   // Anthropic
-  "claude-3-opus": { input: 0.015, output: 0.075 },
-  "claude-3-sonnet": { input: 0.003, output: 0.015 },
-  "claude-3-haiku": { input: 0.00025, output: 0.00125 },
-  
+  "claude-sonnet-4-20250514": { input: 0.003, output: 0.015 },
+  "claude-3-5-sonnet-20241022": { input: 0.003, output: 0.015 },
+  "claude-3-5-haiku-20241022": { input: 0.0008, output: 0.004 },
+  "claude-3-opus-20240229": { input: 0.015, output: 0.075 },
+  "claude-3-sonnet-20240229": { input: 0.003, output: 0.015 },
+  "claude-3-haiku-20240307": { input: 0.00025, output: 0.00125 },
+
   // Google
+  "gemini-1.5-pro": { input: 0.00125, output: 0.005 },
+  "gemini-1.5-flash": { input: 0.000075, output: 0.0003 },
   "gemini-pro": { input: 0.00025, output: 0.0005 },
-  "gemini-ultra": { input: 0.00125, output: 0.00375 },
-  
+
   // Mistral
-  "mistral-large": { input: 0.004, output: 0.012 },
-  "mistral-medium": { input: 0.0027, output: 0.0081 },
-  "mistral-small": { input: 0.0006, output: 0.0018 },
+  "mistral-large-latest": { input: 0.004, output: 0.012 },
+  "mistral-medium-latest": { input: 0.0027, output: 0.0081 },
+  "mistral-small-latest": { input: 0.001, output: 0.003 },
+  "mixtral-8x7b-instruct": { input: 0.0007, output: 0.0007 },
 };
 
 /**
@@ -95,22 +132,25 @@ async function executeOpenAI(
   const prompt = interpolatePrompt(request.prompt, request.variables);
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [
-          ...(request.systemPrompt ? [{ role: "system", content: request.systemPrompt }] : []),
-          { role: "user", content: prompt },
-        ],
-        temperature: request.temperature ?? 0.7,
-        max_tokens: request.maxTokens ?? 1000,
-      }),
-    });
+    const response = await fetchWithTimeout(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [
+            ...(request.systemPrompt ? [{ role: "system", content: request.systemPrompt }] : []),
+            { role: "user", content: prompt },
+          ],
+          temperature: request.temperature ?? 0.7,
+          max_tokens: request.maxTokens ?? 1000,
+        }),
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json();
@@ -159,21 +199,24 @@ async function executeAnthropic(
   const prompt = interpolatePrompt(request.prompt, request.variables);
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [{ role: "user", content: prompt }],
-        ...(request.systemPrompt && { system: request.systemPrompt }),
-        temperature: request.temperature ?? 0.7,
-        max_tokens: request.maxTokens ?? 1000,
-      }),
-    });
+    const response = await fetchWithTimeout(
+      "https://api.anthropic.com/v1/messages",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [{ role: "user", content: prompt }],
+          ...(request.systemPrompt && { system: request.systemPrompt }),
+          temperature: request.temperature ?? 0.7,
+          max_tokens: request.maxTokens ?? 1000,
+        }),
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json();
@@ -226,7 +269,7 @@ async function executeGoogle(
       ? `${request.systemPrompt}\n\n${prompt}`
       : prompt;
 
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1/models/${config.model}:generateContent?key=${apiKey}`,
       {
         method: "POST",
@@ -293,22 +336,25 @@ async function executeMistral(
   const prompt = interpolatePrompt(request.prompt, request.variables);
 
   try {
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [
-          ...(request.systemPrompt ? [{ role: "system", content: request.systemPrompt }] : []),
-          { role: "user", content: prompt },
-        ],
-        temperature: request.temperature ?? 0.7,
-        max_tokens: request.maxTokens ?? 1000,
-      }),
-    });
+    const response = await fetchWithTimeout(
+      "https://api.mistral.ai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [
+            ...(request.systemPrompt ? [{ role: "system", content: request.systemPrompt }] : []),
+            { role: "user", content: prompt },
+          ],
+          temperature: request.temperature ?? 0.7,
+          max_tokens: request.maxTokens ?? 1000,
+        }),
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json();

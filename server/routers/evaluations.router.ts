@@ -22,8 +22,12 @@ export const evaluationsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      // TODO: Implement getUserEvaluations with proper filtering
-      const evaluations = await db.getUserEvaluations(ctx.user.id);
+      const evaluations = await db.getUserEvaluations(ctx.user.id, {
+        promptId: input.promptId,
+        status: input.status,
+        limit: input.limit,
+        offset: input.offset,
+      });
       return evaluations;
     }),
 
@@ -82,15 +86,20 @@ export const evaluationsRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Access denied to prompt" });
       }
 
-      // Verify all providers exist and user has access
-      for (const providerId of input.providerIds) {
-        const provider = await db.getAIProvider(providerId);
-        if (!provider || provider.userId !== ctx.user.id) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `Access denied to provider ${providerId}`,
-          });
-        }
+      // Verify all providers exist and user has access (parallel validation)
+      const providerValidations = await Promise.all(
+        input.providerIds.map(async (providerId) => {
+          const provider = await db.getAIProvider(providerId);
+          return { providerId, provider, valid: provider && provider.userId === ctx.user.id };
+        })
+      );
+
+      const invalidProvider = providerValidations.find(v => !v.valid);
+      if (invalidProvider) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Access denied to provider ${invalidProvider.providerId}`,
+        });
       }
 
       // Create evaluation
@@ -175,13 +184,13 @@ export const evaluationsRouter = router({
     }),
 
   /**
-   * Delete an evaluation
+   * Delete an evaluation and its results
    */
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const evaluation = await db.getEvaluation(input.id);
-      
+
       if (!evaluation) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Evaluation not found" });
       }
@@ -190,8 +199,16 @@ export const evaluationsRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
       }
 
-      // TODO: Implement deleteEvaluation in db.ts
-      // await db.deleteEvaluation(input.id);
+      // Delete evaluation results first, then the evaluation
+      await db.deleteEvaluationResults(input.id);
+      await db.deleteEvaluation(input.id);
+
+      // Track analytics
+      await db.trackEvent({
+        userId: ctx.user.id,
+        eventType: "evaluation_deleted",
+        eventData: { evaluationId: input.id },
+      });
 
       return { success: true };
     }),

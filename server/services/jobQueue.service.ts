@@ -18,6 +18,7 @@ export interface Job<T = any> {
   createdAt: Date;
   startedAt?: Date;
   completedAt?: Date;
+  retryAfter?: Date; // For exponential backoff
 }
 
 export interface JobHandler<T = any, R = any> {
@@ -115,9 +116,11 @@ class JobQueue {
   private async processNextJob(): Promise<void> {
     if (this.processing) return;
 
-    // Find next pending job
+    const now = new Date();
+
+    // Find next pending job that's ready to run (respects backoff)
     const pendingJob = Array.from(this.jobs.values()).find(
-      job => job.status === "pending"
+      job => job.status === "pending" && (!job.retryAfter || job.retryAfter <= now)
     );
 
     if (!pendingJob) return;
@@ -163,24 +166,21 @@ class JobQueue {
       console.log(`[JobQueue] Job ${job.id} completed successfully`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      
+
       if (job.attempts < job.maxAttempts) {
-        // Retry with exponential backoff
+        // Retry with exponential backoff using retryAfter timestamp
+        const backoffMs = Math.min(1000 * Math.pow(2, job.attempts), 30000);
         job.status = "pending";
         job.error = errorMessage;
-        
-        const backoffMs = Math.min(1000 * Math.pow(2, job.attempts), 30000);
-        console.log(`[JobQueue] Job ${job.id} failed, retrying in ${backoffMs}ms...`);
-        
-        setTimeout(() => {
-          // Job will be picked up by next processing cycle
-        }, backoffMs);
+        job.retryAfter = new Date(Date.now() + backoffMs);
+
+        console.log(`[JobQueue] Job ${job.id} failed, retrying after ${backoffMs}ms (at ${job.retryAfter.toISOString()})...`);
       } else {
         // Max attempts reached
         job.status = "failed";
         job.error = errorMessage;
         job.completedAt = new Date();
-        
+
         console.error(`[JobQueue] Job ${job.id} failed after ${job.attempts} attempts:`, errorMessage);
       }
     }

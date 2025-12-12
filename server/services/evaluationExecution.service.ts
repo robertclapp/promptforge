@@ -57,22 +57,57 @@ export async function queueEvaluation(data: EvaluationJobData): Promise<string> 
   return jobId;
 }
 
+// Concurrency limit for parallel API calls (avoid rate limiting)
+const MAX_CONCURRENT_REQUESTS = 3;
+
+/**
+ * Execute tasks with concurrency control
+ */
+async function executeWithConcurrency<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency: number
+): Promise<R[]> {
+  const results: R[] = [];
+  const executing: Promise<void>[] = [];
+
+  for (const item of items) {
+    const p = fn(item).then(result => {
+      results.push(result);
+    });
+
+    executing.push(p);
+
+    if (executing.length >= concurrency) {
+      await Promise.race(executing);
+      // Remove completed promises
+      const completedIndex = executing.findIndex(e =>
+        e === Promise.resolve(e).then(() => e)
+      );
+      if (completedIndex > -1) executing.splice(completedIndex, 1);
+    }
+  }
+
+  await Promise.all(executing);
+  return results;
+}
+
 /**
  * Handle evaluation job execution
  */
 async function handleEvaluationJob(data: EvaluationJobData): Promise<EvaluationJobResult> {
   console.log(`[EvaluationExecution] Starting evaluation ${data.evaluationId}`);
 
-  const { evaluationId, promptContent, testCases, providerIds, userId } = data;
+  const { evaluationId, promptContent, testCases, providerIds } = data;
 
   let completedTests = 0;
   let failedTests = 0;
   let totalCost = 0;
   let totalLatency = 0;
-  let totalTests = testCases.length * providerIds.length;
+  const totalTests = testCases.length * providerIds.length;
 
   try {
-    // Get all provider configurations
+    // Get all provider configurations in parallel
     const providers = await Promise.all(
       providerIds.map(id => db.getAIProvider(id))
     );
@@ -84,9 +119,24 @@ async function handleEvaluationJob(data: EvaluationJobData): Promise<EvaluationJ
       throw new Error("No valid AI providers found");
     }
 
-    // Execute each test case against each provider
-    for (const testCase of testCases) {
-      for (const provider of validProviders) {
+    // Create all test execution tasks with proper indices
+    interface TestTask {
+      testCase: typeof testCases[0];
+      testCaseIndex: number;
+      provider: NonNullable<typeof providers[0]>;
+    }
+
+    const tasks: TestTask[] = [];
+    testCases.forEach((testCase, testCaseIndex) => {
+      validProviders.forEach(provider => {
+        tasks.push({ testCase, testCaseIndex, provider });
+      });
+    });
+
+    // Execute tasks with concurrency control
+    await executeWithConcurrency(
+      tasks,
+      async ({ testCase, testCaseIndex, provider }) => {
         try {
           // Execute prompt with this provider and test case
           const result = await executePrompt(
@@ -116,7 +166,7 @@ async function handleEvaluationJob(data: EvaluationJobData): Promise<EvaluationJ
             evaluationId,
             providerId: provider.id,
             model: provider.model,
-            testCaseIndex: testCases.indexOf(testCase),
+            testCaseIndex,
             input: testCase.input,
             output: result.output,
             tokensUsed: result.tokensUsed,
@@ -148,7 +198,7 @@ async function handleEvaluationJob(data: EvaluationJobData): Promise<EvaluationJ
             evaluationId,
             providerId: provider.id,
             model: provider.model,
-            testCaseIndex: testCases.indexOf(testCase),
+            testCaseIndex,
             input: testCase.input,
             output: "",
             tokensUsed: 0,
@@ -159,8 +209,9 @@ async function handleEvaluationJob(data: EvaluationJobData): Promise<EvaluationJ
 
           failedTests++;
         }
-      }
-    }
+      },
+      MAX_CONCURRENT_REQUESTS
+    );
 
     // Update evaluation status to completed
     await db.updateEvaluation(evaluationId, {

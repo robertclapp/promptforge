@@ -18,6 +18,30 @@ PromptForge is a comprehensive AI Prompt & Agent Management Platform that empowe
 - **Security** - Encrypted API keys, secure crypto utilities
 - **Testing** - Comprehensive unit tests for critical paths
 
+### ✅ Recent Improvements (December 2025)
+
+**Bug Fixes:**
+- Fixed evaluation delete endpoint (was commented out)
+- Fixed evaluation list filtering (promptId, status, limit, offset)
+- Fixed job queue retry logic with proper exponential backoff
+- Fixed test case indexing bug in evaluations
+
+**Security:**
+- Added SQL injection protection for search queries
+- Updated token pricing to December 2025 values
+
+**Performance:**
+- Parallel provider validation in evaluation creation
+- Concurrent test execution with configurable limit
+- Added 60-second request timeout with AbortController
+
+**UI/UX:**
+- Added edit functionality for prompts with version tracking
+- Added edit functionality for AI providers
+- Replaced native confirm() with AlertDialog components
+- Updated AI provider models (GPT-4o, Claude 3.5, Gemini 1.5)
+- Added dark mode support to provider cards
+
 ---
 
 ## Phase 2: Enhanced Evaluation System (Q1 2025)
@@ -340,5 +364,144 @@ PromptForge is a comprehensive AI Prompt & Agent Management Platform that empowe
 
 ---
 
-*Last Updated: January 2025*
-*Version: 1.0*
+## Claude Code Implementation Prompts
+
+The following prompts can be used with Claude Code to implement specific features:
+
+### Real-time Evaluation Progress
+```
+Implement real-time evaluation progress tracking for PromptForge:
+
+1. Add a progress field to the evaluations table schema (store as JSON with completedCount, totalCount, currentProvider, currentTestCase)
+2. Update the evaluationExecution.service.ts to update progress after each test case completes
+3. Create a Server-Sent Events endpoint for progress updates at /api/evaluations/:id/progress
+4. Add a progress bar component to the Evaluations page that shows:
+   - Overall progress (X of Y tests completed)
+   - Current provider being tested
+   - Current test case number
+   - Estimated time remaining based on average latency
+5. Show live cost accumulation as tests complete
+```
+
+### Prompt Playground
+```
+Create an interactive Prompt Playground for PromptForge:
+
+1. Add a new /playground route with a full-screen editor
+2. Implement a split-pane layout: prompt editor on left, response on right
+3. Add variable input fields that auto-detect {{variable}} patterns
+4. Include provider/model selector dropdown
+5. Add temperature, max tokens, and other parameter controls
+6. Implement "Run" button that streams the response in real-time
+7. Show token count, latency, and estimated cost
+8. Add syntax highlighting for the prompt editor
+```
+
+### A/B Testing Comparisons
+```
+Add A/B testing comparison features to PromptForge:
+
+1. Create a new ComparisonView component that shows two outputs side-by-side
+2. Add diff highlighting to show differences between outputs
+3. Create a comparison page at /evaluations/:id/compare
+4. Add word count, sentiment, and readability metrics for each output
+5. Include a "vote" feature where users can mark which output is better
+6. Store comparison votes in a new table for analytics
+```
+
+### Cost Analytics Dashboard
+```
+Implement comprehensive cost analytics for PromptForge:
+
+1. Create a cost dashboard page at /analytics/costs showing:
+   - Daily/weekly/monthly spend breakdown with charts
+   - Cost per provider pie chart
+   - Cost per prompt bar chart
+   - Projected monthly costs based on usage
+2. Add budget setting per user with alerts
+3. Implement usage caps with automatic evaluation pausing
+4. Create exportable cost reports
+```
+
+### Webhook Integrations
+```
+Implement webhook integrations for PromptForge:
+
+1. Create a webhooks table with endpoint URL, secret key, event types
+2. Add webhook management UI under a new Settings page
+3. Implement webhook events: evaluation.completed, evaluation.failed, prompt.created
+4. Add webhook payload signing with HMAC
+5. Implement retry logic for failed deliveries
+6. Create webhook logs showing delivery status
+```
+
+### Pagination Controls
+```
+Add pagination to all list pages in PromptForge:
+
+1. Create a reusable Pagination component with:
+   - Page size selector (10, 25, 50, 100)
+   - Page navigation (first, prev, next, last)
+   - "Showing X-Y of Z" text
+2. Update the prompts.list, evaluations.list, and aiProviders.list queries to return total count
+3. Add pagination state to Prompts, Evaluations, and AIProviders pages
+4. Implement URL query params for page and pageSize for shareable URLs
+```
+
+### Keyboard Shortcuts
+```
+Add keyboard shortcuts to PromptForge:
+
+1. Install react-hotkeys-hook
+2. Implement global shortcuts:
+   - Cmd/Ctrl+K: Quick search/command palette
+   - Cmd/Ctrl+N: New prompt
+   - Cmd/Ctrl+E: New evaluation
+   - Cmd/Ctrl+/: Show shortcut help modal
+3. Add page-specific shortcuts for common actions
+4. Create a shortcut cheatsheet modal
+5. Add visual hints showing available shortcuts on hover
+```
+
+### Redis Job Queue Migration
+```
+Migrate PromptForge job queue from in-memory to Redis:
+
+1. Add bullmq dependency
+2. Create RedisJobQueue class implementing the same interface as JobQueue
+3. Add REDIS_URL environment variable configuration
+4. Implement job persistence so jobs survive restarts
+5. Add job progress tracking
+6. Create job monitoring endpoint returning queue stats
+7. Implement graceful shutdown to complete in-progress jobs
+```
+
+### Prompt Templates Library
+```
+Create a Prompt Templates Library for PromptForge:
+
+1. Add a new /templates route showing categorized template cards
+2. Create template categories: Customer Service, Content Writing, Code Generation, Data Analysis
+3. Design templates with title, description, variables, and example outputs
+4. Add "Use Template" button that copies to user's prompts
+5. Implement template search and filtering
+6. Show usage statistics for each template
+```
+
+### SSO/SAML Integration
+```
+Implement SSO/SAML authentication for PromptForge:
+
+1. Add passport-saml dependency
+2. Create SSO configuration UI for organization admins
+3. Implement Just-In-Time user provisioning
+4. Add support for Okta, Azure AD, Google Workspace
+5. Implement attribute mapping for user fields
+6. Add SSO session management
+7. Create setup documentation
+```
+
+---
+
+*Last Updated: December 2025*
+*Version: 1.1*

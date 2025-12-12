@@ -12,24 +12,53 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, FileText, Edit, Trash2, Copy, Eye } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Search, FileText, Edit, Trash2, Copy, Eye, History } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+
+interface FormData {
+  name: string;
+  description: string;
+  content: string;
+  tags: string;
+  isTemplate: boolean;
+  isPublic: boolean;
+}
+
+const initialFormData: FormData = {
+  name: "",
+  description: "",
+  content: "",
+  tags: "",
+  isTemplate: false,
+  isPublic: false,
+};
 
 export default function Prompts() {
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [deletePromptId, setDeletePromptId] = useState<string | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    content: "",
-    tags: "",
-    isTemplate: false,
-    isPublic: false,
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [editFormData, setEditFormData] = useState<FormData & { id: string; changeMessage: string }>({
+    ...initialFormData,
+    id: "",
+    changeMessage: "",
   });
 
   const utils = trpc.useUtils();
@@ -42,14 +71,7 @@ export default function Prompts() {
     onSuccess: () => {
       toast.success("Prompt created successfully!");
       setIsCreateOpen(false);
-      setFormData({
-        name: "",
-        description: "",
-        content: "",
-        tags: "",
-        isTemplate: false,
-        isPublic: false,
-      });
+      setFormData(initialFormData);
       utils.prompts.list.invalidate();
       utils.analytics.getDashboard.invalidate();
     },
@@ -58,9 +80,23 @@ export default function Prompts() {
     },
   });
 
+  const updateMutation = trpc.prompts.update.useMutation({
+    onSuccess: () => {
+      toast.success("Prompt updated successfully!");
+      setIsEditOpen(false);
+      setEditFormData({ ...initialFormData, id: "", changeMessage: "" });
+      utils.prompts.list.invalidate();
+      utils.analytics.getDashboard.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update prompt");
+    },
+  });
+
   const deleteMutation = trpc.prompts.delete.useMutation({
     onSuccess: () => {
       toast.success("Prompt deleted successfully!");
+      setDeletePromptId(null);
       utils.prompts.list.invalidate();
       utils.analytics.getDashboard.invalidate();
     },
@@ -79,15 +115,47 @@ export default function Prompts() {
       name: formData.name,
       description: formData.description || undefined,
       content: formData.content,
-      tags: formData.tags ? formData.tags.split(",").map((t) => t.trim()) : undefined,
+      tags: formData.tags ? formData.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
       isTemplate: formData.isTemplate,
       isPublic: formData.isPublic,
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this prompt?")) {
-      deleteMutation.mutate({ id });
+  const handleEdit = (prompt: any) => {
+    setEditFormData({
+      id: prompt.id,
+      name: prompt.name,
+      description: prompt.description || "",
+      content: prompt.content,
+      tags: prompt.tags?.join(", ") || "",
+      isTemplate: prompt.isTemplate,
+      isPublic: prompt.isPublic,
+      changeMessage: "",
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdate = () => {
+    if (!editFormData.name || !editFormData.content) {
+      toast.error("Name and content are required");
+      return;
+    }
+
+    updateMutation.mutate({
+      id: editFormData.id,
+      name: editFormData.name,
+      description: editFormData.description || undefined,
+      content: editFormData.content,
+      tags: editFormData.tags ? editFormData.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
+      isTemplate: editFormData.isTemplate,
+      isPublic: editFormData.isPublic,
+      changeMessage: editFormData.changeMessage || undefined,
+    });
+  };
+
+  const handleDelete = () => {
+    if (deletePromptId) {
+      deleteMutation.mutate({ id: deletePromptId });
     }
   };
 
@@ -145,23 +213,26 @@ export default function Prompts() {
       {prompts && prompts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {prompts.map((prompt) => (
-            <Card key={prompt.id} className="hover:shadow-md transition-shadow">
+            <Card key={prompt.id} className="hover:shadow-md transition-shadow group">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      {prompt.name}
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg flex items-center gap-2 truncate">
+                      <FileText className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{prompt.name}</span>
                     </CardTitle>
                     {prompt.description && (
-                      <CardDescription className="mt-1">{prompt.description}</CardDescription>
+                      <CardDescription className="mt-1 line-clamp-2">{prompt.description}</CardDescription>
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-2">
                   {prompt.isTemplate && <Badge variant="secondary">Template</Badge>}
                   {prompt.isPublic && <Badge variant="outline">Public</Badge>}
-                  <Badge variant="outline">v{prompt.version}</Badge>
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <History className="w-3 h-3" />
+                    v{prompt.version}
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent>
@@ -178,6 +249,13 @@ export default function Prompts() {
                   <Button
                     size="sm"
                     variant="outline"
+                    onClick={() => handleEdit(prompt)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => handleCopy(prompt.content)}
                   >
                     <Copy className="w-4 h-4" />
@@ -185,7 +263,8 @@ export default function Prompts() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleDelete(prompt.id)}
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeletePromptId(prompt.id)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -212,70 +291,73 @@ export default function Prompts() {
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Prompt</DialogTitle>
             <DialogDescription>
-              Create a reusable prompt template with variables and version control
+              Create a reusable prompt template with variables. Use {"{{variableName}}"} syntax for dynamic content.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="create-name">Name *</Label>
               <Input
-                id="name"
+                id="create-name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., Customer Support Response"
               />
             </div>
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="create-description">Description</Label>
               <Input
-                id="description"
+                id="create-description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description of this prompt"
               />
             </div>
             <div>
-              <Label htmlFor="content">Prompt Content *</Label>
+              <Label htmlFor="create-content">Prompt Content *</Label>
               <Textarea
-                id="content"
+                id="create-content"
                 value={formData.content}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Enter your prompt template here..."
+                placeholder="Enter your prompt template here. Use {{variable}} for dynamic values..."
                 rows={8}
+                className="font-mono text-sm"
               />
             </div>
             <div>
-              <Label htmlFor="tags">Tags (comma-separated)</Label>
+              <Label htmlFor="create-tags">Tags (comma-separated)</Label>
               <Input
-                id="tags"
+                id="create-tags"
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                 placeholder="e.g., support, customer-service, email"
               />
             </div>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+            <div className="flex gap-6">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="create-template"
                   checked={formData.isTemplate}
-                  onChange={(e) => setFormData({ ...formData, isTemplate: e.target.checked })}
-                  className="w-4 h-4"
+                  onCheckedChange={(checked) => setFormData({ ...formData, isTemplate: !!checked })}
                 />
-                <span className="text-sm">Save as template</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+                <Label htmlFor="create-template" className="text-sm cursor-pointer">
+                  Save as template
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="create-public"
                   checked={formData.isPublic}
-                  onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
-                  className="w-4 h-4"
+                  onCheckedChange={(checked) => setFormData({ ...formData, isPublic: !!checked })}
                 />
-                <span className="text-sm">Make public</span>
-              </label>
+                <Label htmlFor="create-public" className="text-sm cursor-pointer">
+                  Make public
+                </Label>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -289,24 +371,118 @@ export default function Prompts() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Prompt</DialogTitle>
+            <DialogDescription>
+              Update your prompt. Content changes will create a new version.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Name *</Label>
+              <Input
+                id="edit-name"
+                value={editFormData.name}
+                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                placeholder="e.g., Customer Support Response"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Input
+                id="edit-description"
+                value={editFormData.description}
+                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                placeholder="Brief description of this prompt"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-content">Prompt Content *</Label>
+              <Textarea
+                id="edit-content"
+                value={editFormData.content}
+                onChange={(e) => setEditFormData({ ...editFormData, content: e.target.value })}
+                placeholder="Enter your prompt template here..."
+                rows={8}
+                className="font-mono text-sm"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-tags">Tags (comma-separated)</Label>
+              <Input
+                id="edit-tags"
+                value={editFormData.tags}
+                onChange={(e) => setEditFormData({ ...editFormData, tags: e.target.value })}
+                placeholder="e.g., support, customer-service, email"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-change-message">Change Message (optional)</Label>
+              <Input
+                id="edit-change-message"
+                value={editFormData.changeMessage}
+                onChange={(e) => setEditFormData({ ...editFormData, changeMessage: e.target.value })}
+                placeholder="Describe what changed in this version"
+              />
+            </div>
+            <div className="flex gap-6">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="edit-template"
+                  checked={editFormData.isTemplate}
+                  onCheckedChange={(checked) => setEditFormData({ ...editFormData, isTemplate: !!checked })}
+                />
+                <Label htmlFor="edit-template" className="text-sm cursor-pointer">
+                  Save as template
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="edit-public"
+                  checked={editFormData.isPublic}
+                  onCheckedChange={(checked) => setEditFormData({ ...editFormData, isPublic: !!checked })}
+                />
+                <Label htmlFor="edit-public" className="text-sm cursor-pointer">
+                  Make public
+                </Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* View Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedPrompt?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              {selectedPrompt?.name}
+            </DialogTitle>
             <DialogDescription>{selectedPrompt?.description}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Content</Label>
-              <div className="mt-2 p-4 bg-muted rounded-lg">
-                <pre className="whitespace-pre-wrap text-sm">{selectedPrompt?.content}</pre>
+              <div className="mt-2 p-4 bg-muted rounded-lg max-h-80 overflow-y-auto">
+                <pre className="whitespace-pre-wrap text-sm font-mono">{selectedPrompt?.content}</pre>
               </div>
             </div>
             {selectedPrompt?.tags && selectedPrompt.tags.length > 0 && (
               <div>
                 <Label>Tags</Label>
-                <div className="flex gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-2">
                   {selectedPrompt.tags.map((tag: string) => (
                     <Badge key={tag} variant="secondary">
                       {tag}
@@ -315,23 +491,62 @@ export default function Prompts() {
                 </div>
               </div>
             )}
-            <div className="flex gap-4 text-sm text-muted-foreground">
-              <span>Version: {selectedPrompt?.version}</span>
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-t pt-4">
+              <span className="flex items-center gap-1">
+                <History className="w-4 h-4" />
+                Version: {selectedPrompt?.version}
+              </span>
               <span>
                 Created: {selectedPrompt?.createdAt && new Date(selectedPrompt.createdAt).toLocaleDateString()}
               </span>
+              <span>
+                Updated: {selectedPrompt?.updatedAt && new Date(selectedPrompt.updatedAt).toLocaleDateString()}
+              </span>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleCopy(selectedPrompt?.content || "")}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => handleCopy(selectedPrompt?.content || "")} className="w-full sm:w-auto">
               <Copy className="w-4 h-4 mr-2" />
               Copy to Clipboard
             </Button>
-            <Button onClick={() => setIsViewOpen(false)}>Close</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsViewOpen(false);
+                handleEdit(selectedPrompt);
+              }}
+              className="w-full sm:w-auto"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Prompt
+            </Button>
+            <Button onClick={() => setIsViewOpen(false)} className="w-full sm:w-auto">
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletePromptId} onOpenChange={(open) => !open && setDeletePromptId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Prompt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this prompt? This action cannot be undone, and all associated versions will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-
