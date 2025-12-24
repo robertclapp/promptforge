@@ -3,6 +3,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 import { TRPCError } from "@trpc/server";
 import { withTransaction } from "../utils/transaction";
+import { requirePermission } from "../_core/permissions";
 
 /**
  * Prompts Router
@@ -15,7 +16,6 @@ export const promptsRouter = router({
   list: protectedProcedure
     .input(
       z.object({
-        organizationId: z.string().optional(),
         search: z.string().optional(),
         tags: z.array(z.string()).optional(),
         isTemplate: z.boolean().optional(),
@@ -24,7 +24,11 @@ export const promptsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const prompts = await db.getUserPrompts(ctx.user.id, input);
+      // Use activeTeamId from context for workspace isolation
+      const prompts = await db.getUserPrompts(ctx.user.id, {
+        ...input,
+        organizationId: ctx.activeTeamId || undefined,
+      });
       return prompts;
     }),
 
@@ -87,6 +91,9 @@ export const promptsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Check permission
+      await requirePermission(ctx.user.id, ctx.activeTeamId, "CREATE_PROMPTS");
+      
       // Use transaction to ensure prompt and version are created atomically
       const promptId = await withTransaction(async () => {
         const id = await db.createPrompt({
@@ -99,7 +106,8 @@ export const promptsRouter = router({
           folderPath: input.folderPath,
           isTemplate: input.isTemplate,
           isPublic: input.isPublic,
-          organizationId: input.organizationId,
+          // Always use activeTeamId from context for workspace isolation
+          organizationId: ctx.activeTeamId || undefined,
         });
 
         // Create initial version

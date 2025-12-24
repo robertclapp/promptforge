@@ -7,6 +7,8 @@ import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
+import { SocketProvider } from "./contexts/SocketContext";
+import { WorkspaceProvider } from "./contexts/WorkspaceContext";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,11 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      headers() {
+        // Send active team ID with every request
+        const activeTeamId = localStorage.getItem("activeTeamId");
+        return activeTeamId ? { "x-active-team-id": activeTeamId } : {};
+      },
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),
@@ -55,7 +62,11 @@ const trpcClient = trpc.createClient({
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <SocketProvider>
+        <WorkspaceProvider>
+          <App />
+        </WorkspaceProvider>
+      </SocketProvider>
     </QueryClientProvider>
   </trpc.Provider>
 );

@@ -42,6 +42,18 @@ export function ThemeProvider({
     }
   }, [theme, switchable]);
 
+  // Listen for toggle-theme custom event
+  useEffect(() => {
+    if (!switchable) return;
+    
+    const handleToggleTheme = () => {
+      setTheme(prev => (prev === "light" ? "dark" : "light"));
+    };
+
+    window.addEventListener('toggle-theme', handleToggleTheme);
+    return () => window.removeEventListener('toggle-theme', handleToggleTheme);
+  }, [switchable]);
+
   const toggleTheme = switchable
     ? () => {
         setTheme(prev => (prev === "light" ? "dark" : "light"));

@@ -1,6 +1,7 @@
 import { jobQueue } from "./jobQueue.service";
 import { executePrompt, type AIProviderConfig, type PromptExecutionResult } from "./aiProvider.service";
 import * as db from "../db";
+import { trackSpending } from "./budget.service";
 
 /**
  * Evaluation Execution Service
@@ -124,6 +125,18 @@ async function handleEvaluationJob(data: EvaluationJobData): Promise<EvaluationJ
             cost: Math.round(result.cost * 100), // Store as cents
             quality: qualityScore ? Math.round(qualityScore) : undefined,
           });
+
+          // Track spending against budgets
+          const costInCents = Math.round(result.cost * 100);
+          const { triggeredAlerts } = await trackSpending(userId, costInCents, provider.id);
+          
+          // Log triggered alerts
+          if (triggeredAlerts.length > 0) {
+            console.log(
+              `[EvaluationExecution] Budget alerts triggered for user ${userId}:`,
+              triggeredAlerts.map(a => `${a.threshold}%`).join(", ")
+            );
+          }
 
           if (result.error) {
             failedTests++;

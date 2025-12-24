@@ -1,0 +1,133 @@
+/* Mobile-specific optimizations for PromptForge */
+
+/* Improve touch targets on mobile */
+@media (max-width: 768px) {
+  /* Larger touch targets for buttons */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Better spacing for mobile forms */
+  .mobile-form-spacing > * + * {
+    margin-top: 1rem;
+  }
+
+  /* Compact cards on mobile */
+  .mobile-card {
+    padding: 0.75rem;
+  }
+
+  /* Hide long descriptions on mobile */
+  .mobile-hide-description {
+    display: none;
+  }
+
+  /* Stack horizontal layouts on mobile */
+  .mobile-stack {
+    flex-direction: column;
+  }
+
+  /* Full width buttons on mobile */
+  .mobile-full-width {
+    width: 100%;
+  }
+
+  /* Smaller text on mobile */
+  .mobile-text-sm {
+    font-size: 0.875rem;
+  }
+
+  /* Compact table cells */
+  .mobile-compact-table td,
+  .mobile-compact-table th {
+    padding: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  /* Hide sidebar labels when collapsed */
+  [data-sidebar="sidebar"] [data-sidebar="menu-button"] span:not(.sr-only) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Improve scrolling performance */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+  }
+
+  /* Bottom safe area for iOS */
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* Prevent text selection during touch */
+  .mobile-no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Two column layouts on tablet */
+  .tablet-two-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Slightly smaller padding */
+  .tablet-compact {
+    padding: 1rem;
+  }
+}
+
+/* Large screen optimizations */
+@media (min-width: 1280px) {
+  /* Max width for content */
+  .content-max-width {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+/* Dark mode mobile optimizations */
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  /* Reduce contrast for better readability */
+  .dark .mobile-reduced-contrast {
+    opacity: 0.95;
+  }
+}
+
+/* Print styles */
+@media print {
+  /* Hide navigation on print */
+  [data-sidebar="sidebar"],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Full width content on print */
+  main {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* Accessibility - Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .high-contrast-border {
+    border-width: 2px;
+  }
+}

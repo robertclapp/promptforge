@@ -8,6 +8,9 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { initializeEvaluationSystem } from "../services/evaluationExecution.service";
+import restApiRouter from "./restApi";
+import { setupSwagger } from "./swagger";
+import { initializeSocketIO } from "./socket";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -34,11 +37,20 @@ async function startServer() {
   
   const app = express();
   const server = createServer(app);
+  
+  // Initialize Socket.io
+  initializeSocketIO(server);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // REST API v1
+  app.use("/api/v1", restApiRouter);
+  
+  // Swagger API Documentation
+  setupSwagger(app);
+  
   // tRPC API
   app.use(
     "/api/trpc",

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 import { TRPCError } from "@trpc/server";
+import { requirePermission } from "../_core/permissions";
 
 /**
  * Context Packages Router
@@ -22,8 +23,11 @@ export const contextPackagesRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      // TODO: Implement getUserContextPackages with proper filtering
+      // Filter context packages by active workspace
       const packages = await db.getUserContextPackages(ctx.user.id);
+      if (ctx.activeTeamId) {
+        return packages.filter(p => p.organizationId === ctx.activeTeamId);
+      }
       return packages;
     }),
 
@@ -61,6 +65,11 @@ export const contextPackagesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Check create permission
+      if (ctx.activeTeamId) {
+        await requirePermission(ctx.user.id, ctx.activeTeamId, 'CREATE_CONTEXT_PACKAGES');
+      }
+
       const packageId = await db.createContextPackage({
         userId: ctx.user.id,
         name: input.name,
@@ -68,7 +77,8 @@ export const contextPackagesRouter = router({
         content: input.content,
         tags: input.tags || [],
         isPublic: input.isPublic,
-        organizationId: input.organizationId,
+        // Always use activeTeamId from context for workspace isolation
+        organizationId: ctx.activeTeamId || undefined,
       });
 
       // Track analytics
@@ -97,6 +107,11 @@ export const contextPackagesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Check edit permission
+      if (ctx.activeTeamId) {
+        await requirePermission(ctx.user.id, ctx.activeTeamId, 'EDIT_CONTEXT_PACKAGES');
+      }
+
       const pkg = await db.getContextPackage(input.id);
       
       if (!pkg) {
@@ -119,6 +134,11 @@ export const contextPackagesRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Check delete permission
+      if (ctx.activeTeamId) {
+        await requirePermission(ctx.user.id, ctx.activeTeamId, 'DELETE_CONTEXT_PACKAGES');
+      }
+
       const pkg = await db.getContextPackage(input.id);
       
       if (!pkg) {

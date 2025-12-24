@@ -3,6 +3,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 import { TRPCError } from "@trpc/server";
 import { queueEvaluation, getEvaluationJobStatus, getQueueStats } from "../services/evaluationExecution.service";
+import { requirePermission } from "../_core/permissions";
 
 /**
  * Evaluations Router
@@ -22,8 +23,12 @@ export const evaluationsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      // TODO: Implement getUserEvaluations with proper filtering
+      // Filter evaluations by active workspace
       const evaluations = await db.getUserEvaluations(ctx.user.id);
+      // Apply workspace filter if activeTeamId is set
+      if (ctx.activeTeamId) {
+        return evaluations.filter(e => e.organizationId === ctx.activeTeamId);
+      }
       return evaluations;
     }),
 
@@ -71,6 +76,11 @@ export const evaluationsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Check write permission
+      if (ctx.activeTeamId) {
+        await requirePermission(ctx.user.id, ctx.activeTeamId, 'CREATE_EVALUATIONS');
+      }
+
       // Verify prompt exists and user has access
       const prompt = await db.getPrompt(input.promptId);
       
@@ -93,7 +103,7 @@ export const evaluationsRouter = router({
         }
       }
 
-      // Create evaluation
+      // Create evaluation with workspace isolation
       const evaluationId = await db.createEvaluation({
         userId: ctx.user.id,
         promptId: input.promptId,
@@ -101,6 +111,7 @@ export const evaluationsRouter = router({
         description: input.description,
         testCases: input.testCases,
         status: "pending",
+        organizationId: ctx.activeTeamId || undefined,
       });
 
       // Queue evaluation for async execution
@@ -135,6 +146,11 @@ export const evaluationsRouter = router({
   run: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Check run permission
+      if (ctx.activeTeamId) {
+        await requirePermission(ctx.user.id, ctx.activeTeamId, 'RUN_EVALUATIONS');
+      }
+
       const evaluation = await db.getEvaluation(input.id);
       
       if (!evaluation) {
@@ -180,6 +196,11 @@ export const evaluationsRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Check delete permission
+      if (ctx.activeTeamId) {
+        await requirePermission(ctx.user.id, ctx.activeTeamId, 'DELETE_EVALUATIONS');
+      }
+
       const evaluation = await db.getEvaluation(input.id);
       
       if (!evaluation) {

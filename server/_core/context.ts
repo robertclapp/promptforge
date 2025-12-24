@@ -6,6 +6,7 @@ export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: User | null;
+  activeTeamId: string | null;
 };
 
 export async function createContext(
@@ -20,9 +21,13 @@ export async function createContext(
     user = null;
   }
 
+  // Extract activeTeamId from request headers (sent by frontend)
+  const activeTeamId = opts.req.headers['x-active-team-id'] as string | undefined;
+
   return {
     req: opts.req,
     res: opts.res,
     user,
+    activeTeamId: activeTeamId || null,
   };
 }

@@ -3,6 +3,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 import { TRPCError } from "@trpc/server";
 import { encrypt, decrypt } from "../utils/crypto";
+import { requirePermission } from "../_core/permissions";
 
 /**
  * Get default model for each provider
@@ -30,7 +31,8 @@ export const aiProvidersRouter = router({
   list: protectedProcedure
     .input(z.object({ organizationId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
-      const providers = await db.getUserAIProviders(ctx.user.id, input.organizationId);
+      // Use activeTeamId from context for workspace isolation
+      const providers = await db.getUserAIProviders(ctx.user.id, ctx.activeTeamId || undefined);
       
       // Never return encrypted API keys to frontend
       return providers.map((p) => ({
@@ -80,12 +82,18 @@ export const aiProvidersRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Check create permission
+      if (ctx.activeTeamId) {
+        await requirePermission(ctx.user.id, ctx.activeTeamId, 'CREATE_AI_PROVIDERS');
+      }
+
       // Encrypt API key before storing
       const encryptedKey = encrypt(input.apiKey);
 
       const providerId = await db.createAIProvider({
         userId: ctx.user.id,
-        organizationId: input.organizationId,
+        // Always use activeTeamId from context for workspace isolation
+        organizationId: ctx.activeTeamId || undefined,
         provider: input.provider,
         name: input.name,
         model: input.model || getDefaultModel(input.provider),
@@ -119,6 +127,11 @@ export const aiProvidersRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Check edit permission
+      if (ctx.activeTeamId) {
+        await requirePermission(ctx.user.id, ctx.activeTeamId, 'EDIT_AI_PROVIDERS');
+      }
+
       const provider = await db.getAIProvider(input.id);
       
       if (!provider) {
@@ -147,6 +160,11 @@ export const aiProvidersRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Check delete permission
+      if (ctx.activeTeamId) {
+        await requirePermission(ctx.user.id, ctx.activeTeamId, 'DELETE_AI_PROVIDERS');
+      }
+
       const provider = await db.getAIProvider(input.id);
       
       if (!provider) {

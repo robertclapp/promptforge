@@ -201,3 +201,139 @@ export const analyticsEvents = mysqlTable("analyticsEvents", {
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type InsertAnalyticsEvent = typeof analyticsEvents.$inferInsert;
 
+
+/**
+ * Budgets for cost control and spending limits
+ */
+export const budgets = mysqlTable("budgets", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  organizationId: varchar("organizationId", { length: 64 }),
+  name: varchar("name", { length: 255 }).notNull(),
+  amount: int("amount").notNull(), // Budget amount in cents
+  period: mysqlEnum("period", ["daily", "weekly", "monthly", "yearly"]).default("monthly").notNull(),
+  startDate: datetime("startDate").notNull(),
+  endDate: datetime("endDate"),
+  providers: json("providers").$type<string[]>(), // Filter by specific providers
+  isActive: boolean("isActive").default(true).notNull(),
+  currentSpend: int("currentSpend").default(0).notNull(), // Current spend in cents
+  lastResetAt: timestamp("lastResetAt").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+export type Budget = typeof budgets.$inferSelect;
+export type InsertBudget = typeof budgets.$inferInsert;
+
+/**
+ * Budget alerts for notifying users when thresholds are reached
+ */
+export const budgetAlerts = mysqlTable("budgetAlerts", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  budgetId: varchar("budgetId", { length: 64 }).notNull(),
+  threshold: int("threshold").notNull(), // Percentage threshold (50, 75, 90, 100)
+  isTriggered: boolean("isTriggered").default(false).notNull(),
+  triggeredAt: timestamp("triggeredAt"),
+  notificationSent: boolean("notificationSent").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export type BudgetAlert = typeof budgetAlerts.$inferSelect;
+export type InsertBudgetAlert = typeof budgetAlerts.$inferInsert;
+
+/**
+ * Test Suites for Regression Testing
+ */
+export const testSuites = mysqlTable("testSuites", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  promptId: varchar("promptId", { length: 64 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  testCases: json("testCases").$type<Array<{ input: Record<string, string>; expectedOutput?: string; minQuality?: number }>>().notNull(),
+  qualityThreshold: int("qualityThreshold").default(80), // Minimum quality score to pass (0-100)
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+export type TestSuite = typeof testSuites.$inferSelect;
+export type InsertTestSuite = typeof testSuites.$inferInsert;
+
+/**
+ * Test Runs for tracking regression test execution
+ */
+export const testRuns = mysqlTable("testRuns", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  suiteId: varchar("suiteId", { length: 64 }).notNull(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  status: mysqlEnum("status", ["pending", "running", "passed", "failed", "error"]).notNull(),
+  gitCommit: varchar("gitCommit", { length: 64 }),
+  gitBranch: varchar("gitBranch", { length: 255 }),
+  results: json("results").$type<Array<{ testCaseIndex: number; passed: boolean; quality: number; output: string; error?: string }>>(),
+  totalTests: int("totalTests").notNull(),
+  passedTests: int("passedTests").notNull(),
+  failedTests: int("failedTests").notNull(),
+  averageQuality: int("averageQuality"), // Average quality score across all tests
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export type TestRun = typeof testRuns.$inferSelect;
+export type InsertTestRun = typeof testRuns.$inferInsert;
+
+/**
+ * Prompt Optimizations - AI-generated suggestions for improving prompts
+ */
+export const optimizations = mysqlTable("optimizations", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  promptId: varchar("promptId", { length: 64 }).notNull(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  originalPrompt: text("originalPrompt").notNull(),
+  optimizedPrompt: text("optimizedPrompt").notNull(),
+  suggestions: json("suggestions").$type<{
+    improvedPrompt: string;
+    explanation: string;
+    improvements: Array<{
+      category: "clarity" | "specificity" | "structure" | "context" | "constraints";
+      issue: string;
+      fix: string;
+    }>;
+    estimatedQualityImprovement: number;
+  }>().notNull(),
+  applied: boolean("applied").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export type Optimization = typeof optimizations.$inferSelect;
+export type InsertOptimization = typeof optimizations.$inferInsert;
+
+// Re-export API-related tables
+export * from "./api_schema";
+
+// Re-export Marketplace-related tables
+export * from "./marketplace_schema";
+
+// Re-export Collaboration-related tables
+export * from "./collaboration_schema";
+
+// Re-export Notifications
+export * from "./notifications_schema";
+
+// Re-export Invitations
+export * from "./invitations_schema";
+
+// Re-export Billing
+export * from "./billing_schema";
+
+// Re-export Audit Logs
+export * from "./audit_schema";
+export * from "./twoFactor_schema";
+export * from "./sessions_schema";
+export * from "./loginActivity_schema";
+export * from "./dataExport_schema";
+export * from "./scheduledReports_schema";
+export * from "./onboarding_schema";
+export * from "./sharedPrompts_schema";
+export * from "./collections_schema";
+export * from "./importExport_schema";

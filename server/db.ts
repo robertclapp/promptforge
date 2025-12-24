@@ -21,6 +21,9 @@ import {
   InsertEvaluationResult,
   analyticsEvents,
   InsertAnalyticsEvent,
+  testSuites,
+  testRuns,
+  optimizations,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { randomUUID } from "crypto";
@@ -501,3 +504,241 @@ export async function getUserAnalytics(userId: string, days: number = 30) {
   return result;
 }
 
+// ============= TEST SUITE FUNCTIONS =============
+
+export async function createTestSuite(suite: {
+  userId: string;
+  promptId: string;
+  name: string;
+  description?: string;
+  testCases: Array<{
+    input: Record<string, string>;
+    expectedOutput?: string;
+    minQuality?: number;
+  }>;
+  qualityThreshold?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = randomUUID();
+  await db.insert(testSuites).values({
+    id,
+    userId: suite.userId,
+    promptId: suite.promptId,
+    name: suite.name,
+    description: suite.description || null,
+    testCases: suite.testCases,
+    qualityThreshold: suite.qualityThreshold || null,
+  });
+  return id;
+}
+
+export async function getTestSuite(id: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(testSuites).where(eq(testSuites.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserTestSuites(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db
+    .select()
+    .from(testSuites)
+    .where(eq(testSuites.userId, userId))
+    .orderBy(desc(testSuites.createdAt));
+
+  return result;
+}
+
+export async function deleteTestSuite(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Delete associated test runs first
+  await db.delete(testRuns).where(eq(testRuns.suiteId, id));
+  
+  // Delete the test suite
+  await db.delete(testSuites).where(eq(testSuites.id, id));
+}
+
+// ============= TEST RUN FUNCTIONS =============
+
+export async function createTestRun(run: {
+  suiteId: string;
+  userId: string;
+  status: "pending" | "running" | "passed" | "failed" | "error";
+  gitCommit?: string;
+  gitBranch?: string;
+  results: Array<{
+    testCaseIndex: number;
+    passed: boolean;
+    quality: number;
+    output: string;
+    error?: string;
+  }> | null;
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  averageQuality: number | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = randomUUID();
+  await db.insert(testRuns).values({
+    id,
+    suiteId: run.suiteId,
+    userId: run.userId,
+    status: run.status,
+    gitCommit: run.gitCommit || null,
+    gitBranch: run.gitBranch || null,
+    results: run.results,
+    totalTests: run.totalTests,
+    passedTests: run.passedTests,
+    failedTests: run.failedTests,
+    averageQuality: run.averageQuality,
+  });
+  return id;
+}
+
+export async function getTestRun(id: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(testRuns).where(eq(testRuns.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getTestRunsForSuite(suiteId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db
+    .select()
+    .from(testRuns)
+    .where(eq(testRuns.suiteId, suiteId))
+    .orderBy(desc(testRuns.createdAt));
+
+  return result;
+}
+
+export async function getUserTestRuns(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db
+    .select()
+    .from(testRuns)
+    .where(eq(testRuns.userId, userId))
+    .orderBy(desc(testRuns.createdAt))
+    .limit(50); // Limit to 50 most recent runs
+
+  return result;
+}
+
+export async function updateTestRun(
+  id: string,
+  updates: {
+    status?: "pending" | "running" | "passed" | "failed" | "error";
+    results?: Array<{
+      testCaseIndex: number;
+      passed: boolean;
+      quality: number;
+      output: string;
+      error?: string;
+    }>;
+    totalTests?: number;
+    passedTests?: number;
+    failedTests?: number;
+    averageQuality?: number;
+    startedAt?: Date;
+    completedAt?: Date;
+  }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(testRuns).set(updates).where(eq(testRuns.id, id));
+}
+
+// ============= OPTIMIZATION FUNCTIONS =============
+
+export async function createOptimization(optimization: {
+  promptId: string;
+  userId: string;
+  originalPrompt: string;
+  optimizedPrompt: string;
+  suggestions: {
+    improvedPrompt: string;
+    explanation: string;
+    improvements: Array<{
+      category: "clarity" | "specificity" | "structure" | "context" | "constraints";
+      issue: string;
+      fix: string;
+    }>;
+    estimatedQualityImprovement: number;
+  };
+  applied: boolean;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = randomUUID();
+  await db.insert(optimizations).values({
+    id,
+    promptId: optimization.promptId,
+    userId: optimization.userId,
+    originalPrompt: optimization.originalPrompt,
+    optimizedPrompt: optimization.optimizedPrompt,
+    suggestions: optimization.suggestions,
+    applied: optimization.applied,
+  });
+  return id;
+}
+
+export async function getOptimization(id: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(optimizations).where(eq(optimizations.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getPromptOptimizations(promptId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db
+    .select()
+    .from(optimizations)
+    .where(eq(optimizations.promptId, promptId))
+    .orderBy(desc(optimizations.createdAt));
+
+  return result;
+}
+
+export async function getUserOptimizations(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db
+    .select()
+    .from(optimizations)
+    .where(eq(optimizations.userId, userId))
+    .orderBy(desc(optimizations.createdAt))
+    .limit(50); // Limit to 50 most recent optimizations
+
+  return result;
+}
+
+export async function updateOptimization(id: string, updates: { applied?: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(optimizations).set(updates).where(eq(optimizations.id, id));
+}

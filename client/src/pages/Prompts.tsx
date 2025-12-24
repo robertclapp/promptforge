@@ -14,14 +14,18 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, FileText, Edit, Trash2, Copy, Eye } from "lucide-react";
+import { Plus, Search, FileText, Edit, Trash2, Copy, Eye, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { OptimizationDialog } from "@/components/OptimizationDialog";
+import { CommentsSection } from "@/components/CommentsSection";
 
 export default function Prompts() {
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isOptimizeOpen, setIsOptimizeOpen] = useState(false);
+  const [isPublishOpen, setIsPublishOpen] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -101,6 +105,33 @@ export default function Prompts() {
     setIsViewOpen(true);
   };
 
+  const handleOptimize = (prompt: any) => {
+    setSelectedPrompt(prompt);
+    setIsOptimizeOpen(true);
+  };
+
+  const publishMutation = trpc.marketplace.publishTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Template published to marketplace!");
+      setIsPublishOpen(false);
+      utils.prompts.list.invalidate();
+      utils.marketplace.getTemplates.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to publish template");
+    },
+  });
+
+  const handlePublish = (prompt: any) => {
+    setSelectedPrompt(prompt);
+    setIsPublishOpen(true);
+  };
+
+  const confirmPublish = () => {
+    if (!selectedPrompt) return;
+    publishMutation.mutate({ promptId: selectedPrompt.id });
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -165,30 +196,52 @@ export default function Prompts() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleView(prompt)}
-                    className="flex-1"
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleCopy(prompt.content)}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(prompt.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleOptimize(prompt)}
+                      variant="default"
+                    >
+                      <Sparkles className="w-4 h-4 mr-1" />
+                      Optimize
+                    </Button>
+                    {!prompt.isPublic && (
+                      <Button
+                        size="sm"
+                        onClick={() => handlePublish(prompt)}
+                        variant="outline"
+                      >
+                        <Upload className="w-4 h-4 mr-1" />
+                        Publish
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleView(prompt)}
+                      className="flex-1"
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopy(prompt.content)}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(prompt.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -321,6 +374,13 @@ export default function Prompts() {
                 Created: {selectedPrompt?.createdAt && new Date(selectedPrompt.createdAt).toLocaleDateString()}
               </span>
             </div>
+
+            {/* Comments Section */}
+            {selectedPrompt && (
+              <div className="border-t pt-4">
+                <CommentsSection promptId={selectedPrompt.id} />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => handleCopy(selectedPrompt?.content || "")}>
@@ -328,6 +388,53 @@ export default function Prompts() {
               Copy to Clipboard
             </Button>
             <Button onClick={() => setIsViewOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Optimization Dialog */}
+      {selectedPrompt && (
+        <OptimizationDialog
+          open={isOptimizeOpen}
+          onOpenChange={setIsOptimizeOpen}
+          promptId={selectedPrompt.id}
+          promptName={selectedPrompt.name}
+          originalContent={selectedPrompt.content}
+        />
+      )}
+
+      {/* Publish Confirmation Dialog */}
+      <Dialog open={isPublishOpen} onOpenChange={setIsPublishOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish to Marketplace</DialogTitle>
+            <DialogDescription>
+              Make this prompt available to all users in the Template Marketplace
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="font-medium">{selectedPrompt?.name}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {selectedPrompt?.description || "No description"}
+              </p>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p>By publishing this template, you agree to:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Make it publicly visible to all users</li>
+                <li>Allow others to use and rate it</li>
+                <li>Keep it available in the marketplace</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPublishOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmPublish} disabled={publishMutation.isPending}>
+              {publishMutation.isPending ? "Publishing..." : "Publish Template"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

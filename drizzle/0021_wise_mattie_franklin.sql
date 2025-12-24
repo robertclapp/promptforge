@@ -1,0 +1,1 @@
+ALTER TABLE `user_onboarding` MODIFY COLUMN `current_step` varchar(64);
