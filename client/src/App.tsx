@@ -41,6 +41,7 @@ import Collections from "@/pages/Collections";
 import PromptImportExport from "@/pages/PromptImportExport";
 import ExportAnalytics from "@/pages/ExportAnalytics";
 import SharedExport from "@/pages/SharedExport";
+import ExportManagement from "@/pages/ExportManagement";
 
 function Router() {
   return (
@@ -203,6 +204,11 @@ function Router() {
       <Route path="/export-analytics">
         <DashboardLayout>
           <ExportAnalytics />
+        </DashboardLayout>
+      </Route>
+      <Route path="/export-management">
+        <DashboardLayout>
+          <ExportManagement />
         </DashboardLayout>
       </Route>
       <Route path="/shared/:shareCode" component={SharedPrompt} />

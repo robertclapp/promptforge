@@ -80,6 +80,7 @@ const menuCategories = [
       { icon: KeyRound, label: "API Keys", path: "/api-keys" },
       { icon: Webhook, label: "Webhooks", path: "/webhooks" },
       { icon: Calendar, label: "Scheduled Reports", path: "/scheduled-reports" },
+      { icon: Shield, label: "Export Management", path: "/export-management" },
     ]
   },
   {

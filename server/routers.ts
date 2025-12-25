@@ -52,6 +52,9 @@ import { importExportHistoryRouter } from "./routers/importExportHistory.router"
 import { exportTemplateRouter } from "./routers/exportTemplate.router";
 import { exportAnalyticsRouter } from "./routers/exportAnalytics.router";
 import { exportSharingRouter } from "./routers/exportSharing.router";
+import { exportVersioningRouter } from "./routers/exportVersioning.router";
+import { exportWebhookRouter } from "./routers/exportWebhook.router";
+import { exportAuditLogRouter } from "./routers/exportAuditLog.router";
 
 /**
  * Main Application Router
@@ -128,6 +131,9 @@ export const appRouter = router({
   exportTemplates: exportTemplateRouter,
   exportAnalytics: exportAnalyticsRouter,
   exportSharing: exportSharingRouter,
+  exportVersioning: exportVersioningRouter,
+  exportWebhooks: exportWebhookRouter,
+  exportAuditLog: exportAuditLogRouter,
 });
 
 export type AppRouter = typeof appRouter;
