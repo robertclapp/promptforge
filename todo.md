@@ -1447,4 +1447,36 @@
 - [x] Test responsive layouts
 
 ### GitHub
+- [x] Update GitHub repository with all changes
+
+---
+
+## Phase 25: UX Enhancements - Keyboard, Onboarding, Dark Mode
+
+### Feature 1: Keyboard Shortcuts
+- [x] Create useKeyboardShortcuts hook
+- [x] Add Ctrl+S to save in editors
+- [x] Add arrow keys for version navigation
+- [x] Add Escape to close dialogs
+- [x] Create keyboard shortcuts help modal
+- [x] Add shortcut indicators to UI buttons
+
+### Feature 2: Guided Onboarding Tour
+- [x] Install or create tour component
+- [x] Define tour steps for export features
+- [x] Add tour trigger for new users
+- [x] Create tour progress persistence
+- [x] Add "Skip tour" and "Restart tour" options
+
+### Feature 3: Dark Mode Optimization
+- [x] Optimize diff viewer colors for dark mode
+- [x] Improve chart colors and contrast
+- [x] Fix any visibility issues in dark mode
+- [x] Add dark mode specific styles where needed
+
+### Testing
+- [x] Write unit tests for keyboard shortcuts hook
+- [x] Test onboarding tour functionality
+
+### GitHub
 - [ ] Update GitHub repository with all changes

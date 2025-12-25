@@ -127,6 +127,29 @@ export function useKeyboardShortcuts() {
         window.dispatchEvent(event);
       },
       category: "UI"
+    },
+    
+    // Export shortcuts
+    {
+      key: "i",
+      modifiers: isMac ? ["meta", "shift"] : ["ctrl", "shift"],
+      description: "Go to Import/Export",
+      action: () => navigate("/import-export"),
+      category: "Navigation"
+    },
+    {
+      key: "a",
+      modifiers: isMac ? ["meta", "shift"] : ["ctrl", "shift"],
+      description: "Go to Export Analytics",
+      action: () => navigate("/export-analytics"),
+      category: "Navigation"
+    },
+    {
+      key: "s",
+      modifiers: isMac ? ["meta", "shift"] : ["ctrl", "shift"],
+      description: "Go to Export Settings",
+      action: () => navigate("/export-settings"),
+      category: "Navigation"
     }
   ];
 

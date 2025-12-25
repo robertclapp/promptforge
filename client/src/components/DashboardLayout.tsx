@@ -403,6 +403,17 @@ function DashboardLayoutContent({
                   <Moon className="mr-2 h-4 w-4 hidden dark:block" />
                   <span>Toggle Theme</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    localStorage.removeItem('promptforge_onboarding_completed');
+                    localStorage.removeItem('promptforge_onboarding_progress');
+                    window.dispatchEvent(new CustomEvent('start-tour'));
+                  }}
+                  className="cursor-pointer"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  <span>Restart Tour</span>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={logout}

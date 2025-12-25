@@ -228,7 +228,7 @@ export default function ExportAnalytics() {
                       <div key={index} className="flex-1 flex flex-col items-center gap-1">
                         <div className="flex gap-0.5 items-end h-40">
                           <div
-                            className="w-2 bg-blue-500 rounded-t"
+                            className="w-2 bg-blue-500 dark:bg-blue-400 rounded-t"
                             style={{
                               height: `${(day.exports / maxFrequency) * 100}%`,
                               minHeight: day.exports > 0 ? "4px" : "0",
@@ -236,7 +236,7 @@ export default function ExportAnalytics() {
                             title={`${day.exports} exports`}
                           />
                           <div
-                            className="w-2 bg-green-500 rounded-t"
+                            className="w-2 bg-green-500 dark:bg-green-400 rounded-t"
                             style={{
                               height: `${(day.imports / maxFrequency) * 100}%`,
                               minHeight: day.imports > 0 ? "4px" : "0",
@@ -253,11 +253,11 @@ export default function ExportAnalytics() {
                   </div>
                   <div className="flex items-center justify-center gap-6 mt-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-blue-500 rounded" />
+                      <div className="w-3 h-3 bg-blue-500 dark:bg-blue-400 rounded" />
                       <span className="text-sm">Exports</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded" />
+                      <div className="w-3 h-3 bg-green-500 dark:bg-green-400 rounded" />
                       <span className="text-sm">Imports</span>
                     </div>
                   </div>
@@ -287,7 +287,7 @@ export default function ExportAnalytics() {
                     {fileSizeTrends?.slice(-30).map((day, index) => (
                       <div key={index} className="flex-1 flex flex-col items-center">
                         <div
-                          className="w-full bg-purple-500 rounded-t"
+                          className="w-full bg-purple-500 dark:bg-purple-400 rounded-t"
                           style={{
                             height: `${(day.totalSize / maxFileSize) * 100}%`,
                             minHeight: day.totalSize > 0 ? "4px" : "0",
@@ -303,7 +303,7 @@ export default function ExportAnalytics() {
                   </div>
                   <div className="flex items-center justify-center gap-6 mt-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-purple-500 rounded" />
+                      <div className="w-3 h-3 bg-purple-500 dark:bg-purple-400 rounded" />
                       <span className="text-sm">Total Size</span>
                     </div>
                   </div>

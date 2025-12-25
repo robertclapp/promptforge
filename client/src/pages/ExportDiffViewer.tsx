@@ -55,15 +55,15 @@ function DiffViewer({ oldText, newText }: { oldText: string; newText: string }) 
         <div
           key={index}
           className={cn(
-            "px-4 py-1 flex items-start gap-2",
-            line.type === "added" && "bg-green-50 dark:bg-green-950/30 text-green-800 dark:text-green-200",
-            line.type === "removed" && "bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-200",
-            line.type === "unchanged" && "bg-muted/30"
+            "px-4 py-1 flex items-start gap-2 border-l-2",
+            line.type === "added" && "bg-green-50 dark:bg-green-950/50 text-green-800 dark:text-green-300 border-l-green-500",
+            line.type === "removed" && "bg-red-50 dark:bg-red-950/50 text-red-800 dark:text-red-300 border-l-red-500",
+            line.type === "unchanged" && "bg-muted/30 border-l-transparent"
           )}
         >
           <span className="w-5 flex-shrink-0 text-muted-foreground">
-            {line.type === "added" && <Plus className="h-4 w-4 text-green-600" />}
-            {line.type === "removed" && <Minus className="h-4 w-4 text-red-600" />}
+            {line.type === "added" && <Plus className="h-4 w-4 text-green-600 dark:text-green-400" />}
+            {line.type === "removed" && <Minus className="h-4 w-4 text-red-600 dark:text-red-400" />}
             {line.type === "unchanged" && <span className="text-xs">&nbsp;</span>}
           </span>
           <span className="whitespace-pre-wrap break-all">{line.text || " "}</span>

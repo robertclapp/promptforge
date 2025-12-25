@@ -44,6 +44,8 @@ import SharedExport from "@/pages/SharedExport";
 import ExportManagement from "@/pages/ExportManagement";
 import ExportSettings from "@/pages/ExportSettings";
 import ExportDiffViewer from "@/pages/ExportDiffViewer";
+import { OnboardingTour, useOnboardingTour } from "@/components/OnboardingTour";
+import { useEffect, useState } from "react";
 
 function Router() {
   return (
@@ -229,6 +231,25 @@ function Router() {
 }
 
 function App() {
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    // Check if user should see the tour (first visit)
+    const completed = localStorage.getItem('promptforge_onboarding_completed');
+    if (completed !== 'true') {
+      // Delay tour start slightly to let the page load
+      const timer = setTimeout(() => setShowTour(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Listen for restart tour event
+    const handleStartTour = () => setShowTour(true);
+    window.addEventListener('start-tour', handleStartTour);
+    return () => window.removeEventListener('start-tour', handleStartTour);
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" switchable={true}>
@@ -236,6 +257,13 @@ function App() {
           <KeyboardShortcutsProvider>
             <Toaster />
             <Router />
+            {showTour && (
+              <OnboardingTour
+                forceShow={showTour}
+                onComplete={() => setShowTour(false)}
+                onSkip={() => setShowTour(false)}
+              />
+            )}
           </KeyboardShortcutsProvider>
         </TooltipProvider>
       </ThemeProvider>
