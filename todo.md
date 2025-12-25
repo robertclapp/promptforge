@@ -1381,4 +1381,37 @@
 - [x] Write unit tests for audit log service
 
 ### GitHub
+- [x] Update GitHub repository with all changes
+
+---
+
+## Phase 23: Export Management Enhancements
+
+### Feature 1: Webhook Templates
+- [x] Create webhook template definitions for Slack, Discord, Teams
+- [x] Add template service with payload formatters
+- [ ] Create template selection UI in webhook creation
+- [x] Add template preview functionality
+- [x] Support custom field mapping for templates
+
+### Feature 2: Version Auto-Cleanup
+- [x] Add retention policy settings to user preferences
+- [x] Create cleanup service with configurable rules
+- [x] Implement scheduled cleanup job
+- [x] Add cleanup statistics and reporting
+- [ ] Create retention policy UI
+
+### Feature 3: Audit Log Alerts
+- [x] Create audit_alerts database table
+- [x] Add alert rule service with CRUD operations
+- [x] Implement real-time alert triggering
+- [x] Support multiple notification channels (email, webhook)
+- [ ] Create alert management UI
+
+### Testing
+- [x] Write unit tests for webhook templates
+- [x] Write unit tests for version cleanup
+- [x] Write unit tests for audit alerts
+
+### GitHub
 - [ ] Update GitHub repository with all changes

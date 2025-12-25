@@ -368,3 +368,141 @@ export const exportAuditSettings = mysqlTable("exportAuditSettings", {
 
 export type ExportAuditSettings = typeof exportAuditSettings.$inferSelect;
 export type InsertExportAuditSettings = typeof exportAuditSettings.$inferInsert;
+
+
+/**
+ * Version Retention Settings - configurable cleanup policies
+ */
+export const versionRetentionSettings = mysqlTable("versionRetentionSettings", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  organizationId: varchar("organizationId", { length: 64 }),
+  // Retention rules
+  enabled: boolean("enabled").default(false).notNull(),
+  maxVersionsPerExport: int("maxVersionsPerExport").default(10), // Keep last N versions
+  maxAgeDays: int("maxAgeDays").default(90), // Delete versions older than N days
+  minVersionsToKeep: int("minVersionsToKeep").default(1).notNull(), // Always keep at least N versions
+  // Size-based cleanup
+  maxTotalSizeMb: int("maxTotalSizeMb"), // Delete oldest when total exceeds N MB
+  // Archive settings
+  archiveBeforeDelete: boolean("archiveBeforeDelete").default(false).notNull(),
+  archiveLocation: varchar("archiveLocation", { length: 500 }),
+  // Schedule
+  cleanupFrequency: mysqlEnum("cleanupFrequency", ["daily", "weekly", "monthly"]).default("weekly").notNull(),
+  lastCleanupAt: timestamp("lastCleanupAt"),
+  nextCleanupAt: timestamp("nextCleanupAt"),
+  // Statistics
+  totalVersionsDeleted: int("totalVersionsDeleted").default(0).notNull(),
+  totalSpaceFreedMb: int("totalSpaceFreedMb").default(0).notNull(),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+export type VersionRetentionSettings = typeof versionRetentionSettings.$inferSelect;
+export type InsertVersionRetentionSettings = typeof versionRetentionSettings.$inferInsert;
+
+/**
+ * Version Cleanup History - track cleanup operations
+ */
+export const versionCleanupHistory = mysqlTable("versionCleanupHistory", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  organizationId: varchar("organizationId", { length: 64 }),
+  // Cleanup details
+  versionsDeleted: int("versionsDeleted").default(0).notNull(),
+  spaceFreedBytes: int("spaceFreedBytes").default(0).notNull(),
+  archivedVersions: int("archivedVersions").default(0).notNull(),
+  // Cleanup criteria used
+  criteria: json("criteria").$type<{
+    maxVersions?: number;
+    maxAgeDays?: number;
+    maxTotalSizeMb?: number;
+  }>(),
+  // Status
+  status: mysqlEnum("status", ["success", "partial", "failed"]).default("success").notNull(),
+  errorMessage: text("errorMessage"),
+  // Duration
+  startedAt: timestamp("startedAt").notNull(),
+  completedAt: timestamp("completedAt"),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export type VersionCleanupHistory = typeof versionCleanupHistory.$inferSelect;
+export type InsertVersionCleanupHistory = typeof versionCleanupHistory.$inferInsert;
+
+/**
+ * Audit Alert Rules - define conditions for triggering alerts
+ */
+export const auditAlertRules = mysqlTable("auditAlertRules", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  organizationId: varchar("organizationId", { length: 64 }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  // Alert conditions
+  triggerOnActions: json("triggerOnActions").$type<string[]>().notNull(), // e.g., ["share_access", "export_failed"]
+  triggerOnResourceTypes: json("triggerOnResourceTypes").$type<string[]>(), // e.g., ["export", "share"]
+  triggerOnStatus: json("triggerOnStatus").$type<string[]>(), // e.g., ["failed", "unauthorized"]
+  // Threshold settings
+  thresholdCount: int("thresholdCount").default(1).notNull(), // Trigger after N occurrences
+  thresholdWindowMinutes: int("thresholdWindowMinutes").default(60).notNull(), // Within N minutes
+  // IP-based rules
+  triggerOnUnknownIp: boolean("triggerOnUnknownIp").default(false).notNull(),
+  allowedIps: json("allowedIps").$type<string[]>(),
+  // Notification channels
+  notifyEmail: boolean("notifyEmail").default(true).notNull(),
+  notifyWebhook: boolean("notifyWebhook").default(false).notNull(),
+  webhookUrl: varchar("webhookUrl", { length: 500 }),
+  webhookSecret: varchar("webhookSecret", { length: 255 }),
+  // Status
+  isActive: boolean("isActive").default(true).notNull(),
+  lastTriggeredAt: timestamp("lastTriggeredAt"),
+  triggerCount: int("triggerCount").default(0).notNull(),
+  // Cooldown
+  cooldownMinutes: int("cooldownMinutes").default(15).notNull(), // Minimum time between alerts
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+export type AuditAlertRule = typeof auditAlertRules.$inferSelect;
+export type InsertAuditAlertRule = typeof auditAlertRules.$inferInsert;
+
+/**
+ * Audit Alert History - track triggered alerts
+ */
+export const auditAlertHistory = mysqlTable("auditAlertHistory", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  ruleId: varchar("ruleId", { length: 64 }).notNull(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  organizationId: varchar("organizationId", { length: 64 }),
+  // Alert details
+  alertType: varchar("alertType", { length: 100 }).notNull(),
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("medium").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  // Related audit events
+  auditEventIds: json("auditEventIds").$type<string[]>().notNull(),
+  eventCount: int("eventCount").default(1).notNull(),
+  // Context
+  sourceIp: varchar("sourceIp", { length: 45 }),
+  userAgent: text("userAgent"),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  // Notification status
+  emailSent: boolean("emailSent").default(false).notNull(),
+  webhookSent: boolean("webhookSent").default(false).notNull(),
+  webhookResponse: text("webhookResponse"),
+  // Acknowledgment
+  acknowledged: boolean("acknowledged").default(false).notNull(),
+  acknowledgedBy: varchar("acknowledgedBy", { length: 64 }),
+  acknowledgedAt: timestamp("acknowledgedAt"),
+  acknowledgeNote: text("acknowledgeNote"),
+  // Timestamps
+  triggeredAt: timestamp("triggeredAt").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export type AuditAlertHistory = typeof auditAlertHistory.$inferSelect;
+export type InsertAuditAlertHistory = typeof auditAlertHistory.$inferInsert;
