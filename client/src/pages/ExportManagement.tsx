@@ -259,10 +259,10 @@ export default function ExportManagement() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Export Management</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Export Management</h1>
             <p className="text-muted-foreground">
               Manage versions, webhooks, and audit logs for your exports
             </p>
@@ -270,16 +270,16 @@ export default function ExportManagement() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="versions" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsTrigger value="versions" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <History className="w-4 h-4" />
               Versions
             </TabsTrigger>
-            <TabsTrigger value="webhooks" className="flex items-center gap-2">
+            <TabsTrigger value="webhooks" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <Webhook className="w-4 h-4" />
               Webhooks
             </TabsTrigger>
-            <TabsTrigger value="audit" className="flex items-center gap-2">
+            <TabsTrigger value="audit" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <Shield className="w-4 h-4" />
               Audit Log
             </TabsTrigger>
@@ -288,7 +288,7 @@ export default function ExportManagement() {
           {/* Versions Tab */}
           <TabsContent value="versions" className="space-y-4">
             {/* Version Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Versions</CardTitle>
@@ -496,7 +496,7 @@ export default function ExportManagement() {
           {/* Audit Log Tab */}
           <TabsContent value="audit" className="space-y-4">
             {/* Audit Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Events</CardTitle>

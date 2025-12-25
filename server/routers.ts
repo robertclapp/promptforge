@@ -58,6 +58,7 @@ import { exportAuditLogRouter } from "./routers/exportAuditLog.router";
 import { webhookTemplatesRouter } from "./routers/webhookTemplates.router";
 import { versionCleanupRouter } from "./routers/versionCleanup.router";
 import { auditAlertsRouter } from "./routers/auditAlerts.router";
+import { exportDiffRouter } from "./routers/exportDiff.router";
 
 /**
  * Main Application Router
@@ -140,6 +141,7 @@ export const appRouter = router({
   webhookTemplates: webhookTemplatesRouter,
   versionCleanup: versionCleanupRouter,
   auditAlerts: auditAlertsRouter,
+  exportDiff: exportDiffRouter,
 });
 
 export type AppRouter = typeof appRouter;

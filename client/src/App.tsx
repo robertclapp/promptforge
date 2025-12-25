@@ -42,6 +42,8 @@ import PromptImportExport from "@/pages/PromptImportExport";
 import ExportAnalytics from "@/pages/ExportAnalytics";
 import SharedExport from "@/pages/SharedExport";
 import ExportManagement from "@/pages/ExportManagement";
+import ExportSettings from "@/pages/ExportSettings";
+import ExportDiffViewer from "@/pages/ExportDiffViewer";
 
 function Router() {
   return (
@@ -210,6 +212,12 @@ function Router() {
         <DashboardLayout>
           <ExportManagement />
         </DashboardLayout>
+      </Route>
+      <Route path="/export-settings">
+        <ExportSettings />
+      </Route>
+      <Route path="/export-diff">
+        <ExportDiffViewer />
       </Route>
       <Route path="/shared/:shareCode" component={SharedPrompt} />
       <Route path="/shared-export/:shareCode" component={SharedExport} />

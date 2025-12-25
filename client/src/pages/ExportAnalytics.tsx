@@ -78,9 +78,9 @@ export default function ExportAnalytics() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
             <BarChart3 className="h-8 w-8" />
             Export Analytics
           </h1>
@@ -89,7 +89,7 @@ export default function ExportAnalytics() {
           </p>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Select time range" />
           </SelectTrigger>
           <SelectContent>
@@ -184,24 +184,24 @@ export default function ExportAnalytics() {
 
       {/* Charts */}
       <Tabs defaultValue="frequency" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="frequency" className="flex items-center gap-2">
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1">
+          <TabsTrigger value="frequency" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <Activity className="h-4 w-4" />
             Activity
           </TabsTrigger>
-          <TabsTrigger value="size" className="flex items-center gap-2">
+          <TabsTrigger value="size" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <TrendingUp className="h-4 w-4" />
             File Sizes
           </TabsTrigger>
-          <TabsTrigger value="breakdown" className="flex items-center gap-2">
+          <TabsTrigger value="breakdown" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <PieChart className="h-4 w-4" />
             Breakdown
           </TabsTrigger>
-          <TabsTrigger value="templates" className="flex items-center gap-2">
+          <TabsTrigger value="templates" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <LayoutTemplate className="h-4 w-4" />
             Templates
           </TabsTrigger>
-          <TabsTrigger value="hourly" className="flex items-center gap-2">
+          <TabsTrigger value="hourly" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <Clock className="h-4 w-4" />
             Hourly
           </TabsTrigger>

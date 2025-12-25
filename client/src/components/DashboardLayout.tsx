@@ -28,7 +28,7 @@ import {
   Settings, Sparkles, DollarSign, TestTube2, KeyRound, Store, Users, 
   TrendingUp, CreditCard, Shield, Settings2, Bell, Smartphone, Globe, 
   ClipboardCheck, Monitor, Lock, Activity, Download, Webhook, ChevronDown,
-  Search, Home, Calendar, Mail, Sun, Moon
+  Search, Home, Calendar, Mail, Sun, Moon, GitCompare
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -81,6 +81,8 @@ const menuCategories = [
       { icon: Webhook, label: "Webhooks", path: "/webhooks" },
       { icon: Calendar, label: "Scheduled Reports", path: "/scheduled-reports" },
       { icon: Shield, label: "Export Management", path: "/export-management" },
+      { icon: Settings2, label: "Export Settings", path: "/export-settings" },
+      { icon: GitCompare, label: "Version Compare", path: "/export-diff" },
     ]
   },
   {
