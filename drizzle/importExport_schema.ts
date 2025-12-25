@@ -122,3 +122,34 @@ export const exportTemplates = mysqlTable("exportTemplates", {
 
 export type ExportTemplate = typeof exportTemplates.$inferSelect;
 export type InsertExportTemplate = typeof exportTemplates.$inferInsert;
+
+/**
+ * Export Shares - shareable links for exports with access controls
+ */
+export const exportShares = mysqlTable("exportShares", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  organizationId: varchar("organizationId", { length: 64 }),
+  // Share configuration
+  shareCode: varchar("shareCode", { length: 32 }).notNull().unique(),
+  exportHistoryId: varchar("exportHistoryId", { length: 64 }).notNull(),
+  // Access controls
+  password: varchar("password", { length: 255 }), // Hashed password if protected
+  maxDownloads: int("maxDownloads"), // null = unlimited
+  downloadCount: int("downloadCount").default(0).notNull(),
+  expiresAt: timestamp("expiresAt"), // null = never expires
+  // Permissions
+  allowPreview: boolean("allowPreview").default(true).notNull(),
+  allowDownload: boolean("allowDownload").default(true).notNull(),
+  // Tracking
+  lastAccessedAt: timestamp("lastAccessedAt"),
+  accessLog: json("accessLog").$type<Array<{ ip: string; userAgent: string; timestamp: string }>>(),
+  // Status
+  isActive: boolean("isActive").default(true).notNull(),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+export type ExportShare = typeof exportShares.$inferSelect;
+export type InsertExportShare = typeof exportShares.$inferInsert;

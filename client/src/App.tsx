@@ -39,6 +39,8 @@ import PromptPerformance from "@/pages/PromptPerformance";
 import SharedPrompt from "@/pages/SharedPrompt";
 import Collections from "@/pages/Collections";
 import PromptImportExport from "@/pages/PromptImportExport";
+import ExportAnalytics from "@/pages/ExportAnalytics";
+import SharedExport from "@/pages/SharedExport";
 
 function Router() {
   return (
@@ -198,7 +200,13 @@ function Router() {
           <PromptImportExport />
         </DashboardLayout>
       </Route>
+      <Route path="/export-analytics">
+        <DashboardLayout>
+          <ExportAnalytics />
+        </DashboardLayout>
+      </Route>
       <Route path="/shared/:shareCode" component={SharedPrompt} />
+      <Route path="/shared-export/:shareCode" component={SharedExport} />
       <Route path="/accept-invitation" component={AcceptInvitation} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

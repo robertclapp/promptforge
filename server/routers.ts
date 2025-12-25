@@ -50,6 +50,8 @@ import { promptImportExportRouter } from "./routers/promptImportExport.router";
 import { exportScheduleRouter } from "./routers/exportSchedule.router";
 import { importExportHistoryRouter } from "./routers/importExportHistory.router";
 import { exportTemplateRouter } from "./routers/exportTemplate.router";
+import { exportAnalyticsRouter } from "./routers/exportAnalytics.router";
+import { exportSharingRouter } from "./routers/exportSharing.router";
 
 /**
  * Main Application Router
@@ -124,6 +126,8 @@ export const appRouter = router({
   exportSchedules: exportScheduleRouter,
   importExportHistory: importExportHistoryRouter,
   exportTemplates: exportTemplateRouter,
+  exportAnalytics: exportAnalyticsRouter,
+  exportSharing: exportSharingRouter,
 });
 
 export type AppRouter = typeof appRouter;

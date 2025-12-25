@@ -20,6 +20,8 @@ export const promptImportExportRouter = router({
       z.object({
         promptIds: z.array(z.string()).optional(),
         enableCompression: z.boolean().default(false),
+        enableEncryption: z.boolean().default(false),
+        encryptionPassword: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -28,6 +30,14 @@ export const promptImportExportRouter = router({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "No active workspace selected",
+        });
+      }
+
+      // Validate encryption parameters
+      if (input.enableEncryption && !input.encryptionPassword) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Encryption password is required when encryption is enabled",
         });
       }
 
@@ -41,6 +51,8 @@ export const promptImportExportRouter = router({
         userName: ctx.user.name || "Unknown User",
         workspaceName: "Workspace", // TODO: Get actual workspace name
         enableCompression: input.enableCompression,
+        enableEncryption: input.enableEncryption,
+        encryptionPassword: input.encryptionPassword,
       });
 
       return result;
@@ -53,6 +65,7 @@ export const promptImportExportRouter = router({
         jsonContent: z.string(),
         overwriteExisting: z.boolean().default(false),
         prefix: z.string().optional(),
+        decryptionPassword: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -74,6 +87,7 @@ export const promptImportExportRouter = router({
         {
           overwriteExisting: input.overwriteExisting,
           prefix: input.prefix,
+          decryptionPassword: input.decryptionPassword,
         }
       );
 

@@ -1,0 +1,20 @@
+CREATE TABLE `exportShares` (
+	`id` varchar(64) NOT NULL,
+	`userId` varchar(64) NOT NULL,
+	`organizationId` varchar(64),
+	`shareCode` varchar(32) NOT NULL,
+	`exportHistoryId` varchar(64) NOT NULL,
+	`password` varchar(255),
+	`maxDownloads` int,
+	`downloadCount` int NOT NULL DEFAULT 0,
+	`expiresAt` timestamp,
+	`allowPreview` boolean NOT NULL DEFAULT true,
+	`allowDownload` boolean NOT NULL DEFAULT true,
+	`lastAccessedAt` timestamp,
+	`accessLog` json,
+	`isActive` boolean NOT NULL DEFAULT true,
+	`createdAt` timestamp DEFAULT (now()),
+	`updatedAt` timestamp DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `exportShares_id` PRIMARY KEY(`id`),
+	CONSTRAINT `exportShares_shareCode_unique` UNIQUE(`shareCode`)
+);

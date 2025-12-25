@@ -8,6 +8,7 @@ import { prompts, promptVersions } from "../../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { storagePut, storageGet } from "../storage";
 import { gzipSync, gunzipSync } from "zlib";
+import { createEncryptedExport, decryptExportPackage, isEncryptedExport } from "./exportEncryption.service";
 
 // Export format version for compatibility
 const EXPORT_FORMAT_VERSION = "1.0";
@@ -42,6 +43,7 @@ export interface ExportPackage {
   promptCount: number;
   prompts: ExportedPrompt[];
   isCompressed?: boolean;
+  isEncrypted?: boolean;
 }
 
 export interface ImportResult {
@@ -61,8 +63,15 @@ export async function exportPrompts(params: {
   userName?: string;
   workspaceName?: string;
   enableCompression?: boolean;
-}): Promise<{ url: string; filename: string; size: number; promptCount: number; versionCount: number; isCompressed: boolean }> {
-  const { organizationId, promptIds, userId, userName = "Unknown", workspaceName = "Default Workspace", enableCompression = false } = params;
+  enableEncryption?: boolean;
+  encryptionPassword?: string;
+}): Promise<{ url: string; filename: string; size: number; promptCount: number; versionCount: number; isCompressed: boolean; isEncrypted: boolean }> {
+  const { organizationId, promptIds, userId, userName = "Unknown", workspaceName = "Default Workspace", enableCompression = false, enableEncryption = false, encryptionPassword } = params;
+  
+  // Validate encryption parameters
+  if (enableEncryption && !encryptionPassword) {
+    throw new Error("Encryption password is required when encryption is enabled");
+  }
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -150,26 +159,39 @@ export async function exportPrompts(params: {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const baseFilename = `promptforge-export-${timestamp}`;
   
-  // Prepare content - optionally compress
-  const jsonContent = JSON.stringify(exportPackage, null, 2);
+  // Prepare content - optionally encrypt and/or compress
+  let jsonContent = JSON.stringify(exportPackage, null, 2);
   let uploadContent: Buffer;
   let filename: string;
   let contentType: string;
+  let actuallyEncrypted = false;
   
+  // Apply encryption first if enabled
+  if (enableEncryption && encryptionPassword) {
+    const { encryptedPackage } = createEncryptedExport(jsonContent, encryptionPassword);
+    jsonContent = encryptedPackage;
+    actuallyEncrypted = true;
+  }
+  
+  // Then apply compression if enabled
   if (enableCompression) {
     // Compress with gzip
     uploadContent = gzipSync(Buffer.from(jsonContent));
-    filename = `${baseFilename}.json.gz`;
+    filename = actuallyEncrypted 
+      ? `${baseFilename}.encrypted.json.gz`
+      : `${baseFilename}.json.gz`;
     contentType = "application/gzip";
   } else {
     uploadContent = Buffer.from(jsonContent);
-    filename = `${baseFilename}.json`;
+    filename = actuallyEncrypted
+      ? `${baseFilename}.encrypted.json`
+      : `${baseFilename}.json`;
     contentType = "application/json";
   }
 
   // Upload to S3
   const { url } = await storagePut(
-    `exports/${organizationId}/${filename}`,
+    `exports/${organizationId || userId}/${filename}`,
     uploadContent,
     contentType
   );
@@ -186,7 +208,8 @@ export async function exportPrompts(params: {
     size: uploadContent.length,
     promptCount: exportedPrompts.length,
     versionCount: totalVersionCount,
-    isCompressed: enableCompression
+    isCompressed: enableCompression,
+    isEncrypted: actuallyEncrypted
   };
 }
 
@@ -258,17 +281,41 @@ export async function importPrompts(
   options: {
     overwriteExisting?: boolean;
     prefix?: string;
+    decryptionPassword?: string;
   } = {}
 ): Promise<ImportResult> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const { overwriteExisting = false, prefix = "" } = options;
+  const { overwriteExisting = false, prefix = "", decryptionPassword } = options;
 
   // Decompress if needed and parse
   let importData: ExportPackage;
   try {
-    const decompressedContent = decompressIfNeeded(jsonContent);
+    let decompressedContent = decompressIfNeeded(jsonContent);
+    
+    // Check if content is encrypted and decrypt if password provided
+    if (isEncryptedExport(decompressedContent)) {
+      if (!decryptionPassword) {
+        return {
+          success: false,
+          imported: 0,
+          skipped: 0,
+          errors: ["This export file is encrypted. Please provide the decryption password."],
+        };
+      }
+      try {
+        decompressedContent = decryptExportPackage(decompressedContent, decryptionPassword);
+      } catch (decryptError) {
+        return {
+          success: false,
+          imported: 0,
+          skipped: 0,
+          errors: ["Failed to decrypt the export file. Please check your password."],
+        };
+      }
+    }
+    
     importData = JSON.parse(decompressedContent);
   } catch (e) {
     return {

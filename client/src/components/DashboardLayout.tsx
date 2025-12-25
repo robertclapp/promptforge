@@ -69,6 +69,7 @@ const menuCategories = [
       { icon: TrendingUp, label: "Workspace Analytics", path: "/workspace-analytics" },
       { icon: Activity, label: "API Dashboard", path: "/api-dashboard" },
       { icon: Zap, label: "Performance", path: "/performance" },
+      { icon: BarChart3, label: "Export Analytics", path: "/export-analytics" },
     ]
   },
   {

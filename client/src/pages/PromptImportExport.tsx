@@ -56,6 +56,15 @@ import {
   Plus,
   Edit,
   ExternalLink,
+  Lock,
+  Unlock,
+  Eye,
+  EyeOff,
+  Shield,
+  Share2,
+  Link,
+  Copy,
+  BarChart3,
 } from "lucide-react";
 
 const DAYS_OF_WEEK = [
@@ -76,6 +85,10 @@ export default function PromptImportExport() {
   const [selectedPromptIds, setSelectedPromptIds] = useState<string[]>([]);
   const [exportAll, setExportAll] = useState(true);
   const [enableCompression, setEnableCompression] = useState(false);
+  const [enableEncryption, setEnableEncryption] = useState(false);
+  const [encryptionPassword, setEncryptionPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   // Import state
@@ -91,6 +104,9 @@ export default function PromptImportExport() {
     skipped: number;
     errors: string[];
   } | null>(null);
+  const [isEncryptedFile, setIsEncryptedFile] = useState(false);
+  const [decryptionPassword, setDecryptionPassword] = useState("");
+  const [showDecryptionPassword, setShowDecryptionPassword] = useState(false);
 
   // Schedule state
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
@@ -146,6 +162,21 @@ export default function PromptImportExport() {
     notifyOnSuccess: true,
     notifyOnFailure: true,
   });
+
+  // Sharing state
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [sharingHistoryId, setSharingHistoryId] = useState<string | null>(null);
+  const [shareForm, setShareForm] = useState({
+    password: "",
+    maxDownloads: "",
+    expiresInDays: "7",
+    allowPreview: true,
+    allowDownload: true,
+  });
+
+  // Fetch shares
+  const { data: sharesData, isLoading: sharesLoading } = trpc.exportSharing.list.useQuery();
+  const { data: shareStats } = trpc.exportSharing.stats.useQuery();
 
   // Export mutation
   const exportMutation = trpc.promptImportExport.export.useMutation({
@@ -308,6 +339,46 @@ export default function PromptImportExport() {
     },
   });
 
+  // Sharing mutations
+  const createShareMutation = trpc.exportSharing.create.useMutation({
+    onSuccess: (data) => {
+      toast.success("Share link created", {
+        description: "Copy the link to share your export.",
+      });
+      setShowShareDialog(false);
+      resetShareForm();
+      utils.exportSharing.list.invalidate();
+      utils.exportSharing.stats.invalidate();
+      // Copy to clipboard
+      navigator.clipboard.writeText(data.shareUrl);
+    },
+    onError: (error) => {
+      toast.error("Failed to create share", { description: error.message });
+    },
+  });
+
+  const deleteShareMutation = trpc.exportSharing.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Share deleted");
+      utils.exportSharing.list.invalidate();
+      utils.exportSharing.stats.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete share", { description: error.message });
+    },
+  });
+
+  const revokeShareMutation = trpc.exportSharing.revoke.useMutation({
+    onSuccess: () => {
+      toast.success("Share revoked");
+      utils.exportSharing.list.invalidate();
+      utils.exportSharing.stats.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to revoke share", { description: error.message });
+    },
+  });
+
   // Helper functions
   const resetScheduleForm = () => {
     setScheduleForm({
@@ -338,6 +409,34 @@ export default function PromptImportExport() {
       notifyOnSuccess: true,
       notifyOnFailure: true,
     });
+  };
+
+  const resetShareForm = () => {
+    setShareForm({
+      password: "",
+      maxDownloads: "",
+      expiresInDays: "7",
+      allowPreview: true,
+      allowDownload: true,
+    });
+    setSharingHistoryId(null);
+  };
+
+  const handleCreateShare = () => {
+    if (!sharingHistoryId) return;
+    createShareMutation.mutate({
+      exportHistoryId: sharingHistoryId,
+      password: shareForm.password || undefined,
+      maxDownloads: shareForm.maxDownloads ? parseInt(shareForm.maxDownloads) : undefined,
+      expiresInDays: shareForm.expiresInDays ? parseInt(shareForm.expiresInDays) : undefined,
+      allowPreview: shareForm.allowPreview,
+      allowDownload: shareForm.allowDownload,
+    });
+  };
+
+  const copyShareLink = (url: string) => {
+    navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard");
   };
 
   const handleCreateTemplate = () => {
@@ -400,16 +499,41 @@ export default function PromptImportExport() {
   };
 
   const handleExport = async () => {
+    // Validate encryption settings
+    if (enableEncryption) {
+      if (!encryptionPassword) {
+        toast.error("Password required", {
+          description: "Please enter a password for encryption.",
+        });
+        return;
+      }
+      if (encryptionPassword !== confirmPassword) {
+        toast.error("Passwords don't match", {
+          description: "Please make sure both passwords match.",
+        });
+        return;
+      }
+      if (encryptionPassword.length < 8) {
+        toast.error("Weak password", {
+          description: "Password must be at least 8 characters long.",
+        });
+        return;
+      }
+    }
+    
     setIsExporting(true);
     exportMutation.mutate({
       promptIds: exportAll ? undefined : selectedPromptIds,
       enableCompression,
+      enableEncryption,
+      encryptionPassword: enableEncryption ? encryptionPassword : undefined,
     });
   };
 
   const processFile = async (file: File) => {
     const isJson = file.name.endsWith(".json");
     const isGzip = file.name.endsWith(".json.gz") || file.name.endsWith(".gz");
+    const isEncrypted = file.name.includes(".encrypted");
     
     if (!isJson && !isGzip) {
       toast.error("Invalid file type", {
@@ -420,6 +544,8 @@ export default function PromptImportExport() {
 
     setImportFile(file);
     setImportResult(null);
+    setIsEncryptedFile(isEncrypted);
+    setDecryptionPassword("");
 
     try {
       let text: string;
@@ -432,6 +558,7 @@ export default function PromptImportExport() {
           promptCount: "?",
           prompts: [],
           isCompressed: true,
+          isEncrypted,
           fileName: file.name,
         });
         return;
@@ -439,6 +566,20 @@ export default function PromptImportExport() {
       
       text = await file.text();
       const data = JSON.parse(text);
+      
+      // Check if the file is encrypted
+      if (data.type === "promptforge-encrypted-export") {
+        setIsEncryptedFile(true);
+        setImportPreview({
+          formatVersion: "encrypted",
+          promptCount: "?",
+          prompts: [],
+          isEncrypted: true,
+          fileName: file.name,
+        });
+        return;
+      }
+      
       setImportPreview(data);
     } catch (error) {
       toast.error("Invalid file", {
@@ -480,6 +621,14 @@ export default function PromptImportExport() {
 
   const handleImport = async () => {
     if (!importFile) return;
+    
+    // Validate decryption password for encrypted files
+    if (isEncryptedFile && !decryptionPassword) {
+      toast.error("Password required", {
+        description: "This file is encrypted. Please enter the decryption password.",
+      });
+      return;
+    }
 
     setIsImporting(true);
     
@@ -504,6 +653,7 @@ export default function PromptImportExport() {
       jsonContent: content,
       overwriteExisting,
       prefix: importPrefix || undefined,
+      decryptionPassword: isEncryptedFile ? decryptionPassword : undefined,
     });
   };
 
@@ -678,7 +828,7 @@ export default function PromptImportExport() {
       )}
 
       <Tabs defaultValue="export" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="export" className="flex items-center gap-2">
             <Download className="h-4 w-4" />
             Export
@@ -698,6 +848,10 @@ export default function PromptImportExport() {
           <TabsTrigger value="history" className="flex items-center gap-2">
             <History className="h-4 w-4" />
             History
+          </TabsTrigger>
+          <TabsTrigger value="sharing" className="flex items-center gap-2">
+            <Share2 className="h-4 w-4" />
+            Sharing
           </TabsTrigger>
         </TabsList>
 
@@ -780,6 +934,85 @@ export default function PromptImportExport() {
                 />
                 <Label htmlFor="enable-compression">Enable gzip compression</Label>
                 <span className="text-xs text-muted-foreground">(Reduces file size for large exports)</span>
+              </div>
+
+              {/* Encryption Options */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="enable-encryption"
+                    checked={enableEncryption}
+                    onCheckedChange={(checked) => {
+                      setEnableEncryption(checked);
+                      if (!checked) {
+                        setEncryptionPassword("");
+                        setConfirmPassword("");
+                      }
+                    }}
+                  />
+                  <Label htmlFor="enable-encryption" className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Enable AES-256 encryption
+                  </Label>
+                </div>
+
+                {enableEncryption && (
+                  <div className="space-y-4 pl-6">
+                    <Alert>
+                      <Lock className="h-4 w-4" />
+                      <AlertTitle>Password Protection</AlertTitle>
+                      <AlertDescription>
+                        Your export will be encrypted with AES-256-GCM. You'll need this password to import the file later.
+                        <strong className="block mt-1">Store this password safely - it cannot be recovered!</strong>
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="encryption-password">Encryption Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="encryption-password"
+                          type={showPassword ? "text" : "password"}
+                          value={encryptionPassword}
+                          onChange={(e) => setEncryptionPassword(e.target.value)}
+                          placeholder="Enter a strong password (min 8 characters)"
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      {encryptionPassword && encryptionPassword.length < 8 && (
+                        <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <Input
+                        id="confirm-password"
+                        type={showPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm your password"
+                      />
+                      {confirmPassword && encryptionPassword !== confirmPassword && (
+                        <p className="text-xs text-destructive">Passwords don't match</p>
+                      )}
+                      {confirmPassword && encryptionPassword === confirmPassword && encryptionPassword.length >= 8 && (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Passwords match
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Separator />
@@ -888,40 +1121,91 @@ export default function PromptImportExport() {
 
               {importPreview && (
                 <div className="space-y-4">
+                  {/* Encrypted file notice */}
+                  {isEncryptedFile && (
+                    <Alert variant="default" className="border-amber-500 bg-amber-50 dark:bg-amber-950">
+                      <Lock className="h-4 w-4 text-amber-600" />
+                      <AlertTitle className="text-amber-800 dark:text-amber-200">Encrypted File Detected</AlertTitle>
+                      <AlertDescription className="text-amber-700 dark:text-amber-300">
+                        This export file is encrypted. Enter the decryption password to import.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Decryption password input */}
+                  {isEncryptedFile && (
+                    <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
+                      <Label htmlFor="decryption-password" className="flex items-center gap-2">
+                        <Unlock className="h-4 w-4" />
+                        Decryption Password
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="decryption-password"
+                          type={showDecryptionPassword ? "text" : "password"}
+                          value={decryptionPassword}
+                          onChange={(e) => setDecryptionPassword(e.target.value)}
+                          placeholder="Enter the password used to encrypt this file"
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowDecryptionPassword(!showDecryptionPassword)}
+                        >
+                          {showDecryptionPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <Alert>
                     <FileJson className="h-4 w-4" />
                     <AlertTitle>File Preview</AlertTitle>
                     <AlertDescription>
                       <div className="mt-2 space-y-1">
                         <p>Format Version: {importPreview.formatVersion || "Unknown"}</p>
-                        <p>
-                          Exported:{" "}
-                          {importPreview.exportedAt
-                            ? new Date(importPreview.exportedAt).toLocaleString()
-                            : "Unknown"}
-                        </p>
-                        <p>Prompts: {importPreview.prompts?.length || 0}</p>
-                        {importPreview.workspaceName && (
-                          <p>From Workspace: {importPreview.workspaceName}</p>
+                        {isEncryptedFile ? (
+                          <p className="flex items-center gap-1">
+                            <Lock className="h-3 w-3" />
+                            <span className="text-amber-600">Encrypted - contents hidden until decryption</span>
+                          </p>
+                        ) : (
+                          <>
+                            <p>
+                              Exported:{" "}
+                              {importPreview.exportedAt
+                                ? new Date(importPreview.exportedAt).toLocaleString()
+                                : "Unknown"}
+                            </p>
+                            <p>Prompts: {importPreview.prompts?.length || 0}</p>
+                            {importPreview.workspaceName && (
+                              <p>From Workspace: {importPreview.workspaceName}</p>
+                            )}
+                          </>
                         )}
                       </div>
                     </AlertDescription>
                   </Alert>
 
-                  <div className="border rounded-lg max-h-48 overflow-y-auto p-4">
-                    <p className="font-medium mb-2">Prompts to import:</p>
-                    <ul className="space-y-1">
-                      {importPreview.prompts?.map((prompt: any, index: number) => (
-                        <li key={index} className="flex items-center gap-2 text-sm">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span>{prompt.name}</span>
-                          <Badge variant="outline" className="ml-auto">
-                            {prompt.versions?.length || 0} version(s)
-                          </Badge>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  {!isEncryptedFile && importPreview.prompts?.length > 0 && (
+                    <div className="border rounded-lg max-h-48 overflow-y-auto p-4">
+                      <p className="font-medium mb-2">Prompts to import:</p>
+                      <ul className="space-y-1">
+                        {importPreview.prompts?.map((prompt: any, index: number) => (
+                          <li key={index} className="flex items-center gap-2 text-sm">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span>{prompt.name}</span>
+                            <Badge variant="outline" className="ml-auto">
+                              {prompt.versions?.length || 0} version(s)
+                            </Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1686,6 +1970,276 @@ export default function PromptImportExport() {
                   <p className="text-muted-foreground">No import/export history yet.</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     Your import and export operations will appear here.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Sharing Tab */}
+        <TabsContent value="sharing" className="space-y-4">
+          {/* Stats Cards */}
+          {shareStats && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Total Shares</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{shareStats.totalShares}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Active Shares</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{shareStats.activeShares}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Total Downloads</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{shareStats.totalDownloads}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Password Protected</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{shareStats.passwordProtected}</div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Share2 className="h-5 w-5" />
+                    Shared Exports
+                  </CardTitle>
+                  <CardDescription>
+                    Manage shareable links for your exports.
+                  </CardDescription>
+                </div>
+                <Dialog open={showShareDialog} onOpenChange={(open) => {
+                  setShowShareDialog(open);
+                  if (!open) resetShareForm();
+                }}>
+                  <DialogTrigger asChild>
+                    <Button disabled={!historyData?.some(h => h.operationType === "export" && h.status === "completed")}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Share
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Create Share Link</DialogTitle>
+                      <DialogDescription>
+                        Generate a shareable link for one of your exports.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Select Export</Label>
+                        <Select
+                          value={sharingHistoryId || ""}
+                          onValueChange={setSharingHistoryId}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an export to share" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {historyData
+                              ?.filter(h => h.operationType === "export" && h.status === "completed")
+                              .map((entry) => (
+                                <SelectItem key={entry.id} value={entry.id}>
+                                  {entry.exportFileName || "Export"} - {entry.startedAt ? new Date(entry.startedAt).toLocaleDateString() : "Unknown"}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="share-password">Password (optional)</Label>
+                        <Input
+                          id="share-password"
+                          type="password"
+                          value={shareForm.password}
+                          onChange={(e) => setShareForm({ ...shareForm, password: e.target.value })}
+                          placeholder="Leave empty for no password"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="share-max-downloads">Max Downloads (optional)</Label>
+                        <Input
+                          id="share-max-downloads"
+                          type="number"
+                          min="1"
+                          value={shareForm.maxDownloads}
+                          onChange={(e) => setShareForm({ ...shareForm, maxDownloads: e.target.value })}
+                          placeholder="Unlimited"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="share-expires">Expires In (days)</Label>
+                        <Select
+                          value={shareForm.expiresInDays}
+                          onValueChange={(value) => setShareForm({ ...shareForm, expiresInDays: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 day</SelectItem>
+                            <SelectItem value="7">7 days</SelectItem>
+                            <SelectItem value="30">30 days</SelectItem>
+                            <SelectItem value="90">90 days</SelectItem>
+                            <SelectItem value="365">1 year</SelectItem>
+                            <SelectItem value="">Never</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="share-preview">Allow Preview</Label>
+                        <Switch
+                          id="share-preview"
+                          checked={shareForm.allowPreview}
+                          onCheckedChange={(checked) => setShareForm({ ...shareForm, allowPreview: checked })}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="share-download">Allow Download</Label>
+                        <Switch
+                          id="share-download"
+                          checked={shareForm.allowDownload}
+                          onCheckedChange={(checked) => setShareForm({ ...shareForm, allowDownload: checked })}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowShareDialog(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleCreateShare}
+                        disabled={!sharingHistoryId || createShareMutation.isPending}
+                      >
+                        {createShareMutation.isPending ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</>
+                        ) : (
+                          <>Create Share</>)}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {sharesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : sharesData && sharesData.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Export</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Downloads</TableHead>
+                      <TableHead>Expires</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sharesData.map((share) => (
+                      <TableRow key={share.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {share.hasPassword && <Lock className="h-4 w-4 text-muted-foreground" />}
+                            <span className="font-medium truncate max-w-[200px]">
+                              {share.shareCode}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={share.isActive ? "default" : "secondary"}>
+                            {share.isActive ? "Active" : "Revoked"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {share.downloadCount}
+                          {share.maxDownloads && ` / ${share.maxDownloads}`}
+                        </TableCell>
+                        <TableCell>
+                          {share.expiresAt
+                            ? new Date(share.expiresAt).toLocaleDateString()
+                            : "Never"}
+                        </TableCell>
+                        <TableCell>
+                          {share.createdAt && new Date(share.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => copyShareLink(share.shareUrl)}
+                              title="Copy Link"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => window.open(share.shareUrl, "_blank")}
+                              title="Open Link"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                            {share.isActive && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => revokeShareMutation.mutate({ id: share.id })}
+                                title="Revoke"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteShareMutation.mutate({ id: share.id })}
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <Share2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No shared exports yet.</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Create a share link to let others download your exports.
                   </p>
                 </div>
               )}
